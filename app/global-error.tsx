@@ -1,7 +1,7 @@
 "use client";
 
 /**
- * Captura errores en la raíz (p. ej. variables de entorno faltantes en Vercel).
+ * Captura errores en la raíz (p. adfej. variables de entorno faltantes en Vercel).
  * En producción, el mensaje del error puede ser genérico; mostramos una guía de env. jvgh
  */
 export default function GlobalError({

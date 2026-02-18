@@ -75,7 +75,7 @@ export default async function DashboardPage() {
             En construcción
           </h1>
           <p className="max-w-sm text-slate-400">
-            El dashboard estará disponible próximamente.
+            El dashboard estará disponible próximamente (cuando tengamos el backend listo).
           </p>
         </div>
       </main>
