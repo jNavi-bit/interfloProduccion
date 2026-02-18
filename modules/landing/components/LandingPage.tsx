@@ -24,6 +24,11 @@ const navLinks = [
   { label: "Características", href: "#caracteristicas", icon: LayoutGrid },
 ];
 
+type LandingPageProps = {
+  /** Indica si hay sesión (viene del servidor para evitar hidratación). */
+  isLoggedIn?: boolean;
+};
+
 const features = [
   {
     icon: Cloud,
@@ -50,7 +55,9 @@ const features = [
   },
 ];
 
-export function LandingPage() {
+export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
+  const accessHref = isLoggedIn ? "/dashboard" : "/login";
+
   return (
     <div className="min-h-screen bg-slate-950 text-white antialiased">
       {/* Header */}
@@ -70,7 +77,7 @@ export function LandingPage() {
               priority
             />
             <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-400 ring-1 ring-white/10">
-              Captura
+              Captura de producción
             </span>
           </Link>
           <nav className="hidden items-center gap-1 md:flex">
@@ -87,7 +94,7 @@ export function LandingPage() {
           </nav>
           <Button
             as={Link}
-            href="#acceso"
+            href={accessHref}
             size="lg"
             className="min-h-[48px] min-w-[160px] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40"
           >
@@ -121,19 +128,19 @@ export function LandingPage() {
               Reportes optimizados
             </div>
             <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
-              Sistema de Captura{" "}
+              Captura de producción{" "}
               <span className="bg-gradient-to-r from-white via-slate-200 to-sky-200 bg-clip-text text-transparent">
-                Centralizado
+                Centralizada
               </span>
             </h1>
             <p className="max-w-lg text-lg leading-relaxed text-slate-400">
               Captura la producción diaria de forma eficiente y segura. Despliega
-              reportes y análisis al instante.
+              informes y análisis al instante.
             </p>
             <div className="flex flex-wrap gap-4">
               <Button
                 as={Link}
-                href="#acceso"
+                href={accessHref}
                 size="lg"
                 className="min-h-[56px] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-4 font-semibold text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/50 hover:ring-orange-400/40"
               >
