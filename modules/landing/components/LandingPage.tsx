@@ -62,21 +62,21 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
     <div className="min-h-screen bg-slate-950 text-white antialiased">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-16 max-w-6xl items-center justify-between px-4 sm:px-6">
+        <div className="mx-auto flex h-14 min-h-14 max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-16 sm:flex-nowrap sm:gap-0 sm:px-6 sm:py-0">
           <Link
             href="#inicio"
-            className="flex items-center gap-2 transition opacity-90 hover:opacity-100"
+            className="flex shrink-0 items-center gap-1.5 transition opacity-90 hover:opacity-100 sm:gap-2"
           >
             <Image
               src="/logoInterflo.png"
               alt="interflo."
               width={140}
               height={36}
-              className="h-9 w-auto object-contain"
+              className="h-8 w-auto object-contain sm:h-9"
               style={{ width: "auto", height: "auto" }}
               priority
             />
-            <span className="rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-400 ring-1 ring-white/10">
+            <span className="hidden rounded-full bg-white/5 px-2.5 py-0.5 text-xs font-medium text-slate-400 ring-1 ring-white/10 sm:inline">
               Captura de producción
             </span>
           </Link>
@@ -96,10 +96,11 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             as={Link}
             href={accessHref}
             size="lg"
-            className="min-h-[48px] min-w-[160px] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40"
+            className="min-h-[44px] min-w-0 shrink-0 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40 sm:min-h-[48px] sm:min-w-[160px] sm:px-6 sm:py-3"
           >
-            <LogIn className="mr-2 h-4 w-4" />
-            Acceder al Sistema
+            <LogIn className="h-4 w-4 sm:mr-2" />
+            <span className="hidden sm:inline">Acceder al Sistema</span>
+            <span className="sm:hidden">Acceder</span>
           </Button>
         </div>
       </header>
@@ -107,7 +108,7 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
       {/* Hero */}
       <section
         id="inicio"
-        className="relative overflow-hidden px-4 py-20 sm:px-6 sm:py-28 lg:py-36"
+        className="relative overflow-hidden px-3 py-12 sm:px-6 sm:py-28 lg:py-36"
       >
         <div className="absolute inset-0 bg-slate-950">
           <div className="absolute -left-40 -top-40 h-80 w-80 rounded-full bg-sky-500/20 blur-[100px]" />
@@ -121,54 +122,54 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             backgroundSize: "64px 64px",
           }}
         />
-        <div className="relative mx-auto grid max-w-6xl items-center gap-12 lg:grid-cols-2 lg:gap-20">
-          <div className="space-y-8">
-            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-4 py-1.5 text-sm font-medium text-sky-300">
-              <Sparkles className="h-4 w-4" />
+        <div className="relative mx-auto grid max-w-6xl items-center gap-8 sm:gap-12 lg:grid-cols-2 lg:gap-20">
+          <div className="space-y-5 sm:space-y-8">
+            <div className="inline-flex items-center gap-2 rounded-full border border-sky-500/30 bg-sky-500/10 px-3 py-1.5 text-xs font-medium text-sky-300 sm:px-4 sm:text-sm">
+              <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
               Reportes optimizados
             </div>
-            <h1 className="font-display text-4xl font-bold leading-[1.1] tracking-tight sm:text-5xl lg:text-6xl">
+            <h1 className="font-display text-3xl font-bold leading-[1.15] tracking-tight sm:text-5xl lg:text-6xl">
               Captura de producción{" "}
               <span className="bg-gradient-to-r from-white via-slate-200 to-sky-200 bg-clip-text text-transparent">
                 Centralizada
               </span>
             </h1>
-            <p className="max-w-lg text-lg leading-relaxed text-slate-400">
+            <p className="max-w-lg text-base leading-relaxed text-slate-400 sm:text-lg">
               Captura la producción diaria de forma eficiente y segura. Despliega
               informes y análisis al instante.
             </p>
-            <div className="flex flex-wrap gap-4">
+            <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:gap-4">
               <Button
                 as={Link}
                 href={accessHref}
                 size="lg"
-                className="min-h-[56px] rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-8 py-4 font-semibold text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/50 hover:ring-orange-400/40"
+                className="min-h-[48px] w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-6 py-3 font-semibold text-white shadow-lg shadow-orange-500/30 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/50 hover:ring-orange-400/40 sm:min-h-[56px] sm:w-auto sm:px-8 sm:py-4"
               >
                 Acceso
-                <ArrowRight className="ml-2 h-5 w-5" strokeWidth={2.5} />
+                <ArrowRight className="ml-2 h-5 w-5 shrink-0" strokeWidth={2.5} />
               </Button>
               <Button
                 as={Link}
                 href="#caracteristicas"
                 variant="bordered"
                 size="lg"
-                className="min-h-[56px] rounded-xl border-sky-400/40 bg-sky-500/10 px-8 py-4 font-medium text-sky-200 hover:border-sky-400/60 hover:bg-sky-500/20"
+                className="min-h-[48px] w-full rounded-xl border-sky-400/40 bg-sky-500/10 px-6 py-3 font-medium text-sky-200 hover:border-sky-400/60 hover:bg-sky-500/20 sm:min-h-[56px] sm:w-auto sm:px-8 sm:py-4"
               >
-                <LayoutGrid className="mr-2 h-5 w-5" />
+                <LayoutGrid className="mr-2 h-5 w-5 shrink-0" />
                 Características
               </Button>
             </div>
           </div>
           <div className="relative flex justify-center lg:justify-end">
-            <div className="relative h-72 w-full max-w-lg sm:h-80">
-              <div className="absolute inset-0 rounded-2xl border border-white/10 bg-slate-800/50 p-6 shadow-2xl shadow-black/20 backdrop-blur">
-                <div className="flex h-full flex-col gap-4">
-                  <div className="flex items-center gap-3">
+            <div className="relative h-56 w-full max-w-lg sm:h-72 sm:h-80">
+              <div className="absolute inset-0 rounded-2xl border border-white/10 bg-slate-800/50 p-4 shadow-2xl shadow-black/20 backdrop-blur sm:p-6">
+                <div className="flex h-full flex-col gap-3 sm:gap-4">
+                  <div className="flex items-center gap-2 sm:gap-3">
                     <div className="h-3 w-3 rounded-full bg-emerald-500 shadow-lg shadow-emerald-500/50" />
                     <div className="h-3 w-3 rounded-full bg-amber-500/80" />
                     <div className="h-3 w-3 rounded-full bg-red-500/80" />
                   </div>
-                  <div className="grid flex-1 grid-cols-2 gap-3">
+                  <div className="grid flex-1 grid-cols-2 gap-2 sm:gap-3">
                     {[
                       { icon: Database, label: "Datos" },
                       { icon: Zap, label: "Eficiencia" },
@@ -177,10 +178,10 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
                     ].map(({ icon: Icon, label }) => (
                       <div
                         key={label}
-                        className="flex flex-col items-center justify-center rounded-xl bg-white/5 ring-1 ring-white/10 transition hover:bg-white/10"
+                        className="flex flex-col items-center justify-center rounded-xl bg-white/5 py-2 ring-1 ring-white/10 transition hover:bg-white/10 py-2 sm:py-0"
                       >
-                        <Icon className="mb-2 h-8 w-8 text-sky-400" />
-                        <span className="text-xs font-medium text-slate-400">
+                        <Icon className="mb-1 h-6 w-6 text-sky-400 sm:mb-2 sm:h-8 sm:w-8" />
+                        <span className="text-[10px] font-medium text-slate-400 sm:text-xs">
                           {label}
                         </span>
                       </div>
@@ -202,35 +203,35 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
       {/* Features */}
       <section
         id="caracteristicas"
-        className="relative border-t border-white/5 bg-slate-50 px-4 py-20 text-slate-900 sm:px-6 sm:py-24"
+        className="relative border-t border-white/5 bg-slate-50 px-3 py-14 text-slate-900 sm:px-6 sm:py-24"
       >
         <div className="mx-auto max-w-6xl">
-          <div className="mb-14 text-center">
-            <h2 className="font-display text-3xl font-bold tracking-tight sm:text-4xl">
+          <div className="mb-10 text-center sm:mb-14">
+            <h2 className="font-display text-2xl font-bold tracking-tight sm:text-4xl">
               Todo lo que se necesita.
             </h2>
-            <p className="mx-auto mt-3 max-w-2xl text-slate-600">
+            <p className="mx-auto mt-2 max-w-2xl text-sm text-slate-600 sm:mt-3 sm:text-base">
               Características pensadas para simplificar la captura y el análisis
               de la información.
             </p>
           </div>
-          <div className="grid gap-8 sm:grid-cols-3">
+          <div className="grid gap-5 sm:grid-cols-3 sm:gap-8">
             {features.map(
               ({ icon: Icon, title, description, gradient, light }) => (
                 <Card
                   key={title}
                   className="group rounded-2xl border border-slate-200/80 bg-white shadow-lg shadow-slate-200/50 transition duration-300 hover:-translate-y-1.5 hover:shadow-xl hover:shadow-slate-300/50"
                 >
-                  <CardBody className="gap-5 p-6">
+                  <CardBody className="gap-4 p-4 sm:gap-5 sm:p-6">
                     <div
                       className={`inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-gradient-to-br ${gradient} ${light} text-white shadow-lg transition duration-300 group-hover:scale-105`}
                     >
                       <Icon className="h-7 w-7" strokeWidth={2} />
                     </div>
-                    <h3 className="font-display text-xl font-semibold text-slate-900">
+                    <h3 className="font-display text-lg font-semibold text-slate-900 sm:text-xl">
                       {title}
                     </h3>
-                    <p className="leading-relaxed text-slate-600">
+                    <p className="text-sm leading-relaxed text-slate-600 sm:text-base">
                       {description}
                     </p>
                   </CardBody>
@@ -242,8 +243,8 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-white/5 bg-slate-950 px-4 py-10 sm:px-6">
-        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-6 sm:flex-row">
+      <footer className="border-t border-white/5 bg-slate-950 px-3 py-8 sm:px-6 sm:py-10">
+        <div className="mx-auto flex max-w-6xl flex-col items-center justify-between gap-5 sm:flex-row sm:gap-6">
           <div className="flex items-center gap-2">
             <Image
               src="/logoInterflo.png"
@@ -254,23 +255,23 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
               style={{ width: "auto", height: "auto" }}
             />
           </div>
-          <p className="text-center text-sm text-slate-500 sm:text-left">
+          <p className="text-center text-xs text-slate-500 sm:text-left sm:text-sm">
             © 2026 interflo. Desarrollado por Axel Javier Navor García. Todos
             los derechos reservados.
           </p>
-          <div className="flex items-center gap-8 text-sm">
+          <div className="flex flex-col items-center gap-3 sm:flex-row sm:gap-8 sm:text-sm">
             <Link
               href="#privacidad"
-              className="flex items-center gap-2 text-slate-500 transition hover:text-white"
+              className="flex items-center gap-2 text-xs text-slate-500 transition hover:text-white sm:text-sm"
             >
-              <ShieldCheck className="h-4 w-4" />
+              <ShieldCheck className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Política de Privacidad
             </Link>
             <Link
               href="#terminos"
-              className="flex items-center gap-2 text-slate-500 transition hover:text-white"
+              className="flex items-center gap-2 text-xs text-slate-500 transition hover:text-white sm:text-sm"
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Términos de Servicio
             </Link>
           </div>
