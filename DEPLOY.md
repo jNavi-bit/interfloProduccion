@@ -31,3 +31,16 @@ Márcalas para **Production**, **Preview** y **Development** si quieres que apli
 - **Output:** salida estándar de Next.js (no hace falta configurar `output` en `vercel.json`)
 
 Si algo falla en el build, revisa los logs en Vercel y que las variables de entorno estén bien definidas.
+
+## 5. Si ves "Internal Server Error" en la página
+
+1. **Variables de entorno:** Comprueba que en Vercel (**Settings → Environment Variables**) existan exactamente:
+   - `NEXT_PUBLIC_SUPABASE_URL`
+   - `NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY`
+   No uses otros nombres (p. ej. `NEXT_PUBLIC_SUPABASE_ANON_KEY` no vale).
+
+2. **Redeploy:** Si añadiste o cambiaste variables después del primer deploy, haz un nuevo deploy (Deployments → ⋮ → Redeploy) para que se apliquen.
+
+3. **Logs:** En Vercel, **Deployments → función o deployment → Logs** verás el mensaje real (p. ej. "Missing or invalid env: ...").
+
+4. La app muestra una página de error con estas instrucciones cuando detecta que faltan las variables.
