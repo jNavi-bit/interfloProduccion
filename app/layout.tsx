@@ -21,7 +21,7 @@ const plusJakarta = Plus_Jakarta_Sans({
 
 export const metadata: Metadata = {
   title: "Captura de producción",
-  description: "Captura de producción centralizada",
+  description: "Captura de producción optimizada",
 };
 
 export default function RootLayout({
