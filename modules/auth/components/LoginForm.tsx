@@ -83,16 +83,17 @@ export function LoginForm() {
       <Button
         type="submit"
         size="lg"
-        isLoading={isPending}
+        isDisabled={isPending}
         className="min-h-[52px] w-full rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40"
       >
-        {!isPending && (
+        {isPending ? (
+          "Entrando…"
+        ) : (
           <>
             Entrar
             <ArrowRight className="ml-2 h-5 w-5 shrink-0" strokeWidth={2.5} />
           </>
         )}
-        {isPending && "Entrando…"}
       </Button>
 
       <div className="border-t border-white/10 pt-6">

@@ -8,7 +8,7 @@ export function LoginPage() {
   return (
     <div className="min-h-screen w-full max-w-[100vw] overflow-x-hidden bg-slate-950 text-white antialiased">
       <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 min-h-14 max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-16 sm:flex-nowrap sm:gap-0 sm:px-6 sm:py-0">
+        <div className="flex h-14 min-h-14 items-center px-4 py-2 sm:h-16 sm:px-8 sm:py-0">
           <Link
             href="/"
             className="flex shrink-0 items-center gap-1.5 transition opacity-90 hover:opacity-100 sm:gap-2"
@@ -28,7 +28,7 @@ export function LoginPage() {
           </Link>
           <Link
             href="/"
-            className="rounded-xl px-3 py-2 text-sm font-medium text-slate-300 transition hover:bg-white/5 hover:text-white sm:px-4 sm:py-2.5"
+            className="ml-auto inline-flex items-center rounded-xl border border-sky-400/20 bg-gradient-to-r from-sky-500/10 to-indigo-500/10 px-3 py-2 text-sm font-semibold text-sky-300 shadow-lg shadow-sky-500/10 ring-1 ring-transparent transition hover:border-sky-300/40 hover:from-sky-500/20 hover:to-indigo-500/20 hover:text-sky-200 hover:shadow-sky-500/20 hover:ring-sky-300/20 sm:px-4 sm:py-2.5"
           >
             <span className="hidden sm:inline">Volver al inicio</span>
             <span className="sm:hidden">Inicio</span>

@@ -5,12 +5,13 @@ import type { UserProfile } from "../types";
 
 interface HomePageProps {
   user: UserProfile;
+  planta: string;
 }
 
-export async function HomePage({ user }: HomePageProps) {
+export async function HomePage({ user, planta }: HomePageProps) {
   const [stats, recentActivity] = await Promise.all([
-    getDashboardStats(user.planta),
-    getRecentActivity(user.planta),
+    getDashboardStats(planta),
+    getRecentActivity(planta),
   ]);
 
   return (
@@ -22,7 +23,7 @@ export async function HomePage({ user }: HomePageProps) {
         <p className="mt-1 text-sm text-slate-400">
           Resumen de producción · Planta{" "}
           <span className="font-medium capitalize text-slate-300">
-            {user.planta}
+            {planta === "llave2" ? "llave" : "periférico"}
           </span>
           {stats.lastDate && (
             <>

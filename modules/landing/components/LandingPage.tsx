@@ -62,7 +62,7 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
     <div className="min-h-screen bg-slate-950 text-white antialiased">
       {/* Header */}
       <header className="sticky top-0 z-50 border-b border-white/5 bg-slate-950/90 backdrop-blur-xl">
-        <div className="mx-auto flex h-14 min-h-14 max-w-6xl flex-wrap items-center justify-between gap-2 px-3 py-2 sm:h-16 sm:flex-nowrap sm:gap-0 sm:px-6 sm:py-0">
+        <div className="relative flex h-14 min-h-14 items-center px-4 py-2 sm:h-16 sm:px-8 sm:py-0">
           <Link
             href="#inicio"
             className="flex shrink-0 items-center gap-1.5 transition opacity-90 hover:opacity-100 sm:gap-2"
@@ -80,7 +80,7 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
               Captura de producción
             </span>
           </Link>
-          <nav className="hidden items-center gap-1 md:flex">
+          <nav className="absolute left-1/2 top-1/2 hidden -translate-x-1/2 -translate-y-1/2 items-center gap-1 md:flex">
             {navLinks.map(({ label, href, icon: Icon }) => (
               <Link
                 key={href}
@@ -96,7 +96,7 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             as={Link}
             href={accessHref}
             size="lg"
-            className="min-h-[44px] min-w-0 shrink-0 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40 sm:min-h-[48px] sm:min-w-[160px] sm:px-6 sm:py-3"
+            className="ml-auto min-h-[44px] min-w-0 shrink-0 rounded-xl bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-2.5 font-semibold text-white shadow-lg shadow-orange-500/25 ring-2 ring-orange-400/20 transition hover:shadow-orange-500/40 hover:ring-orange-400/40 sm:min-h-[48px] sm:min-w-[160px] sm:px-6 sm:py-3"
           >
             <LogIn className="h-4 w-4 sm:mr-2" />
             <span className="hidden sm:inline">Acceder al Sistema</span>
