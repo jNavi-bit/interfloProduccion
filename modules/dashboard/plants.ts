@@ -3,11 +3,12 @@ import type { UserProfile } from "./types";
 export const PLANTA_OPTIONS = [
   { value: "llave2", label: "Llave" },
   { value: "periferico", label: "Periférico" },
+  { value: "perisur", label: "Perisur" },
 ] as const;
 
 export type PlantaValue = (typeof PLANTA_OPTIONS)[number]["value"];
 
-const validPlantas = new Set<PlantaValue>(["llave2", "periferico"]);
+const validPlantas = new Set<PlantaValue>(["llave2", "periferico", "perisur"]);
 
 function normalizePlanta(value: string | null | undefined): PlantaValue | null {
   if (!value) return null;

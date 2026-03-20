@@ -4,7 +4,10 @@ import { createClient } from "@/database/utils/supabase/server";
 import type { UserProfile, UserRole, DashboardStats, RecentRecord } from "./types";
 
 function getTableName(planta: string) {
-  return planta === "llave2" ? "llave2Produccion" : "perifericoProduccion";
+  if (planta === "llave2") return "llave2Produccion";
+  if (planta === "periferico") return "perifericoProduccion";
+  if (planta === "perisur") return "perisurProduccion";
+  return "llave2Produccion";
 }
 
 export const getUserProfile = cache(
