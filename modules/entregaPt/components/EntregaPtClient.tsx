@@ -5,8 +5,12 @@ import { Input } from "@heroui/react";
 import { Filter, Search, AlertCircle, CheckCircle2, ImageUp } from "lucide-react";
 import { createClient } from "@/database/utils/supabase/client";
 import { PLANTA_OPTIONS, type PlantaValue } from "@/modules/dashboard/plants";
-import { CAPTURA_COLUMNS, columnIndex, PRODUCCION_TABLE } from "../plantConfig";
-import type { ProduccionRowState } from "../types";
+import {
+  ENTREGA_PT_COLUMNS,
+  columnIndex,
+  PROD_TERMINADO_TABLE,
+} from "@/modules/entregaPt/plantConfig";
+import type { EntregaPtRowState } from "@/modules/entregaPt/types";
 import {
   stableRowId,
   createBlankRow,
@@ -21,18 +25,17 @@ import {
   mergeColumnSuggestion,
   computeFillTargetCells,
   fillValueForStep,
-} from "../gridUtils";
+} from "@/modules/entregaPt/gridUtils";
 import {
-  saveProduccionRow,
-  lookupCatalogoBySku,
-  loadProduccionRowsOlder,
-  deleteProduccionRowsInChunks,
-  reloadCapturaProduccionSnapshot,
-} from "../actions";
+  saveEntregaPtRow,
+  loadEntregaPtRowsOlder,
+  deleteEntregaPtRowsInChunks,
+  reloadEntregaPtSnapshot,
+} from "@/modules/entregaPt/actions";
 
-interface CapturaProduccionClientProps {
+interface EntregaPtClientProps {
   planta: PlantaValue;
-  initialRows: ProduccionRowState[];
+  initialRows: EntregaPtRowState[];
   initialHasMoreOlder: boolean;
 }
 
@@ -41,16 +44,16 @@ const UNDO_MAX = 45;
 const SAVE_DEBOUNCE_MS = 480;
 const PAGE_SIZE = 60;
 
-/** Ancho fijo de la columna de número de fila (solo visual, no forma parte de CAPTURA_COLUMNS). */
+/** Ancho fijo de la columna de número de fila (solo visual, no forma parte de ENTREGA_PT_COLUMNS). */
 const ROW_NUM_COL_PX = 40;
 
 function defaultColumnWidths(): Record<string, number> {
   return Object.fromEntries(
-    CAPTURA_COLUMNS.map((c) => [c.key, c.minWidth ?? 96])
+    ENTREGA_PT_COLUMNS.map((c) => [c.key, c.minWidth ?? 96])
   ) as Record<string, number>;
 }
 
-function cloneRows(r: ProduccionRowState[]): ProduccionRowState[] {
+function cloneRows(r: EntregaPtRowState[]): EntregaPtRowState[] {
   return r.map((row) => ({
     id: row.id,
     tempId: row.tempId,
@@ -59,7 +62,7 @@ function cloneRows(r: ProduccionRowState[]): ProduccionRowState[] {
   }));
 }
 
-function buildInitialRowsState(ir: ProduccionRowState[]): ProduccionRowState[] {
+function buildInitialRowsState(ir: EntregaPtRowState[]): EntregaPtRowState[] {
   const base = cloneRows(ir);
   const trailing = Array.from({ length: TRAILING_EMPTY }, (_, i) =>
     createBlankRowDeterministic(`init-${i}`)
@@ -78,9 +81,9 @@ function parseCellKey(k: string): { rowId: string; colKey: string } {
 
 /** Clave de `scheduleSave`: `id:<n>` o `tempId` de la fila. */
 function findRowBySaveKey(
-  rowList: ProduccionRowState[],
+  rowList: EntregaPtRowState[],
   saveKey: string
-): ProduccionRowState | undefined {
+): EntregaPtRowState | undefined {
   if (saveKey.startsWith("id:")) {
     const id = Number(saveKey.slice(3));
     if (!Number.isFinite(id)) return undefined;
@@ -93,7 +96,7 @@ function rowValuesEqual(
   a: Record<string, string>,
   b: Record<string, string>
 ): boolean {
-  for (const { key } of CAPTURA_COLUMNS) {
+  for (const { key } of ENTREGA_PT_COLUMNS) {
     if ((a[key] ?? "") !== (b[key] ?? "")) return false;
   }
   return true;
@@ -136,8 +139,8 @@ async function imageFileToOptimizedDataUrl(file: File): Promise<string> {
   return canvas.toDataURL("image/jpeg", 0.86);
 }
 
-function mapRowsByDbId(rows: ProduccionRowState[]): Map<number, ProduccionRowState> {
-  const m = new Map<number, ProduccionRowState>();
+function mapRowsByDbId(rows: EntregaPtRowState[]): Map<number, EntregaPtRowState> {
+  const m = new Map<number, EntregaPtRowState>();
   for (const r of rows) {
     if (r.id != null) m.set(r.id, r);
   }
@@ -146,7 +149,7 @@ function mapRowsByDbId(rows: ProduccionRowState[]): Map<number, ProduccionRowSta
 
 function selectionDataCellCoords(
   selected: Set<string>,
-  displayRows: ProduccionRowState[]
+  displayRows: EntregaPtRowState[]
 ): { dr: number; dc: number }[] {
   const rowIdToDr = new Map<string, number>();
   displayRows.forEach((row, dr) => rowIdToDr.set(stableRowId(row), dr));
@@ -181,7 +184,7 @@ function escapeCellForTsv(s: string): string {
 
 function selectionToTsv(
   selected: Set<string>,
-  displayRows: ProduccionRowState[]
+  displayRows: EntregaPtRowState[]
 ): string {
   const rowIdToDr = new Map<string, number>();
   displayRows.forEach((row, dr) => {
@@ -268,10 +271,10 @@ function parseClipboardTsv(text: string): string[][] {
 }
 
 function applyCapturaFilters(
-  rowList: ProduccionRowState[],
+  rowList: EntregaPtRowState[],
   globalSearch: string,
   columnFilters: Record<string, Set<string> | null>
-): ProduccionRowState[] {
+): EntregaPtRowState[] {
   return rowList.filter(
     (row) =>
       rowMatchesGlobalSearch(row, globalSearch) &&
@@ -280,10 +283,10 @@ function applyCapturaFilters(
 }
 
 function applyCapturaFiltersOnDisplayOrder(
-  rowList: ProduccionRowState[],
+  rowList: EntregaPtRowState[],
   globalSearch: string,
   columnFilters: Record<string, Set<string> | null>
-): ProduccionRowState[] {
+): EntregaPtRowState[] {
   return applyCapturaFilters(
     orderRowsWithEmptyFechaLast(rowList),
     globalSearch,
@@ -291,12 +294,12 @@ function applyCapturaFiltersOnDisplayOrder(
   );
 }
 
-export function CapturaProduccionClient({
+export function EntregaPtClient({
   planta,
   initialRows,
   initialHasMoreOlder,
-}: CapturaProduccionClientProps) {
-  const [rows, setRows] = useState<ProduccionRowState[]>(() =>
+}: EntregaPtClientProps) {
+  const [rows, setRows] = useState<EntregaPtRowState[]>(() =>
     buildInitialRowsState(initialRows)
   );
 
@@ -309,7 +312,7 @@ export function CapturaProduccionClient({
   const [columnFilters, setColumnFilters] = useState<Record<string, Set<string> | null>>(
     () => {
       const o: Record<string, Set<string> | null> = {};
-      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
+      for (const { key } of ENTREGA_PT_COLUMNS) o[key] = null;
       return o;
     }
   );
@@ -332,10 +335,7 @@ export function CapturaProduccionClient({
   const editingRef = useRef<typeof editing>(null);
   editingRef.current = editing;
 
-  const [skuMessage, setSkuMessage] = useState<{
-    type: "miss" | "ok";
-    text: string;
-  } | null>(null);
+  const [infoBanner, setInfoBanner] = useState<string | null>(null);
 
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
   const [importingImage, setImportingImage] = useState(false);
@@ -344,8 +344,8 @@ export function CapturaProduccionClient({
   const pendingRemoteReloadRef = useRef(false);
   const realtimeDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  const undoStack = useRef<ProduccionRowState[][]>([]);
-  const redoStack = useRef<ProduccionRowState[][]>([]);
+  const undoStack = useRef<EntregaPtRowState[][]>([]);
+  const redoStack = useRef<EntregaPtRowState[][]>([]);
   const saveTimers = useRef<Map<string, ReturnType<typeof setTimeout>>>(new Map());
 
   const gridRef = useRef<HTMLDivElement>(null);
@@ -385,7 +385,7 @@ export function CapturaProduccionClient({
     if (!br) return null;
     const row = displayRows[br.dr];
     if (!row) return null;
-    const col = CAPTURA_COLUMNS[br.dc];
+    const col = ENTREGA_PT_COLUMNS[br.dc];
     if (!col) return null;
     return {
       dr: br.dr,
@@ -425,7 +425,7 @@ export function CapturaProduccionClient({
 
   /** Tras deshacer/rehacer: borra en BD los ids que ya no existen y actualiza filas con datos distintos. */
   const syncDbAfterHistoryStep = useCallback(
-    async (fromRows: ProduccionRowState[], toRows: ProduccionRowState[]) => {
+    async (fromRows: EntregaPtRowState[], toRows: EntregaPtRowState[]) => {
       const fromMap = mapRowsByDbId(fromRows);
       const toMap = mapRowsByDbId(toRows);
 
@@ -435,7 +435,7 @@ export function CapturaProduccionClient({
       }
 
       if (toDelete.length > 0) {
-        const delRes = await deleteProduccionRowsInChunks(planta, toDelete);
+        const delRes = await deleteEntregaPtRowsInChunks(planta, toDelete);
         if (!delRes.ok) {
           setSaveBanner(delRes.error);
           return;
@@ -445,7 +445,7 @@ export function CapturaProduccionClient({
       for (const [id, row] of toMap) {
         const fromRow = fromMap.get(id);
         if (fromRow && rowValuesEqual(fromRow.values, row.values)) continue;
-        const res = await saveProduccionRow(planta, { id, values: row.values });
+        const res = await saveEntregaPtRow(planta, { id, values: row.values });
         if (!res.ok) {
           setSaveBanner(res.error);
           return;
@@ -462,7 +462,7 @@ export function CapturaProduccionClient({
     redoStack.current = [];
   }, []);
 
-  const applyRows = useCallback((next: ProduccionRowState[]) => {
+  const applyRows = useCallback((next: EntregaPtRowState[]) => {
     setRows(next);
   }, []);
 
@@ -490,7 +490,7 @@ export function CapturaProduccionClient({
     void syncDbAfterHistoryStep(fromRows, next);
   }, [clearAllSaveTimers, syncDbAfterHistoryStep]);
 
-  const ensureTrailing = useCallback((list: ProduccionRowState[]) => {
+  const ensureTrailing = useCallback((list: EntregaPtRowState[]) => {
     let trailing = 0;
     for (let i = list.length - 1; i >= 0; i--) {
       if (list[i].id != null || !isRowOnlyDefaultTurno(list[i])) break;
@@ -509,13 +509,13 @@ export function CapturaProduccionClient({
     }
     clearAllSaveTimers();
     try {
-      const snap = await reloadCapturaProduccionSnapshot(planta, PAGE_SIZE + 1);
+      const snap = await reloadEntregaPtSnapshot(planta, PAGE_SIZE + 1);
       setHasMoreOlder(snap.hasMoreOlder);
       undoStack.current = [];
       redoStack.current = [];
       setEditing(null);
       setSelected(new Set());
-      setSkuMessage(null);
+      setInfoBanner(null);
       setSaveBanner(null);
       setRows(ensureTrailing(orderRowsWithEmptyFechaLast(cloneRows(snap.rows))));
       requestAnimationFrame(() => {
@@ -542,7 +542,7 @@ export function CapturaProduccionClient({
    */
   useEffect(() => {
     const supabase = createClient();
-    const table = PRODUCCION_TABLE[planta];
+    const table = PROD_TERMINADO_TABLE[planta];
     const schedule = () => {
       if (realtimeDebounceRef.current) clearTimeout(realtimeDebounceRef.current);
       realtimeDebounceRef.current = setTimeout(() => {
@@ -552,7 +552,7 @@ export function CapturaProduccionClient({
     };
 
     const channel = supabase
-      .channel(`captura-db-${table}`)
+      .channel(`entrega-pt-db-${table}`)
       .on(
         "postgres_changes",
         { event: "*", schema: "public", table },
@@ -584,7 +584,7 @@ export function CapturaProduccionClient({
     setLoadingMore(true);
 
     try {
-      const res = await loadProduccionRowsOlder(
+      const res = await loadEntregaPtRowsOlder(
         planta,
         {
           beforeFecha: firstPersisted.values.fecha ?? "",
@@ -640,7 +640,7 @@ export function CapturaProduccionClient({
     async (saveKey: string): Promise<boolean> => {
       const latest = findRowBySaveKey(rowsRef.current, saveKey);
       if (!latest || !shouldPersistRow(latest)) return true;
-      const res = await saveProduccionRow(planta, {
+      const res = await saveEntregaPtRow(planta, {
         id: latest.id,
         values: latest.values,
       });
@@ -675,7 +675,7 @@ export function CapturaProduccionClient({
 
   persistRowBySaveKeyRef.current = persistRowBySaveKey;
 
-  const scheduleSave = useCallback((row: ProduccionRowState) => {
+  const scheduleSave = useCallback((row: EntregaPtRowState) => {
     if (!shouldPersistRow(row)) return;
     const key = row.id != null ? `id:${row.id}` : row.tempId ?? "";
     if (!key) return;
@@ -709,7 +709,7 @@ export function CapturaProduccionClient({
 
       try {
         const imageDataUrl = await imageFileToOptimizedDataUrl(file);
-        const res = await fetch("/api/chat", {
+        const res = await fetch("/api/entrega-pt-chat", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({ imageDataUrl, planta }),
@@ -729,11 +729,11 @@ export function CapturaProduccionClient({
           return;
         }
 
-        const importedRows: ProduccionRowState[] = [];
+        const importedRows: EntregaPtRowState[] = [];
         for (const src of sourceRows) {
           const base = createBlankRow();
           const values = { ...base.values };
-          for (const { key } of CAPTURA_COLUMNS) {
+          for (const { key } of ENTREGA_PT_COLUMNS) {
             const raw = src[key];
             if (raw == null) {
               values[key] = "";
@@ -741,10 +741,7 @@ export function CapturaProduccionClient({
               values[key] = String(raw).trim();
             }
           }
-          if (!values.componente && src.cliente != null) {
-            values.componente = String(src.cliente).trim();
-          }
-          const row: ProduccionRowState = { ...base, values };
+          const row: EntregaPtRowState = { ...base, values };
           if (!isRowOnlyDefaultTurno(row)) importedRows.push(row);
         }
 
@@ -768,11 +765,8 @@ export function CapturaProduccionClient({
           scheduleSave(row);
         }
 
-        setSkuMessage({
-          type: "ok",
-          text: `Se importaron ${importedRows.length} filas desde la imagen.`,
-        });
-        setTimeout(() => setSkuMessage(null), 3500);
+        setInfoBanner(`Se importaron ${importedRows.length} filas desde la imagen.`);
+        setTimeout(() => setInfoBanner(null), 3500);
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "No se pudo procesar la imagen.";
@@ -784,44 +778,13 @@ export function CapturaProduccionClient({
     [planta, ensureTrailing, pushUndo, scheduleSave]
   );
 
-  const runSkuLookupForRow = useCallback(
-    async (rowStableId: string, skuValue: string) => {
-      const res = await lookupCatalogoBySku(skuValue);
-      if (res.found) {
-        setSkuMessage({ type: "ok", text: "SKU encontrado en catálogo." });
-        setTimeout(() => setSkuMessage(null), 2500);
-        setRows((prev) => {
-          const idx = prev.findIndex((r) => stableRowId(r) === rowStableId);
-          if (idx < 0) return prev;
-          const copy = [...prev];
-          const v = { ...copy[idx].values };
-          v.proyecto = res.cliente ?? "";
-          v.componente = res.componente ?? "";
-          v.color = res.acabado ?? "";
-          v.peso_unitario = res.peso_unitario ?? "";
-          copy[idx] = { ...copy[idx], values: v };
-          scheduleSave(copy[idx]);
-          return ensureTrailing(copy);
-        });
-      } else {
-        setSkuMessage({
-          type: "miss",
-          text: "SKU no encontrado en catálogo; campos de autocompletado no se modificaron.",
-        });
-        setTimeout(() => setSkuMessage(null), 5000);
-      }
-    },
-    [ensureTrailing, scheduleSave]
-  );
-
   const commitEdit = useCallback(
     (dr: number, dc: number, value: string) => {
       const row = displayRows[dr];
       if (!row) return;
-      const col = CAPTURA_COLUMNS[dc];
+      const col = ENTREGA_PT_COLUMNS[dc];
       if (!col) return;
       const rowId = stableRowId(row);
-      const prevVal = row.values[col.key] ?? "";
 
       pushUndo();
       setRows((prev) => {
@@ -834,16 +797,8 @@ export function CapturaProduccionClient({
         scheduleSave(nextRow);
         return ensureTrailing(copy);
       });
-
-      if (
-        col.key === "sku" &&
-        value.trim() !== "" &&
-        value.trim() !== prevVal.trim()
-      ) {
-        void runSkuLookupForRow(rowId, value);
-      }
     },
-    [displayRows, pushUndo, ensureTrailing, scheduleSave, runSkuLookupForRow]
+    [displayRows, pushUndo, ensureTrailing, scheduleSave]
   );
 
   const beginFillDrag = useCallback(
@@ -876,13 +831,13 @@ export function CapturaProduccionClient({
           columnFiltersRef.current
         );
         const maxR = disp.length - 1;
-        const maxC = CAPTURA_COLUMNS.length - 1;
+        const maxC = ENTREGA_PT_COLUMNS.length - 1;
         const targets = computeFillTargetCells(brDr, brDc, endDr, endDc, maxR, maxC);
         const keys = new Set<string>();
         for (const t of targets) {
           const row = disp[t.dr];
           if (!row) continue;
-          keys.add(cellKey(stableRowId(row), CAPTURA_COLUMNS[t.dc].key));
+          keys.add(cellKey(stableRowId(row), ENTREGA_PT_COLUMNS[t.dc].key));
         }
         return keys;
       };
@@ -931,7 +886,7 @@ export function CapturaProduccionClient({
           columnFiltersRef.current
         );
         const maxR = disp.length - 1;
-        const maxC = CAPTURA_COLUMNS.length - 1;
+        const maxC = ENTREGA_PT_COLUMNS.length - 1;
         const targets = computeFillTargetCells(
           brDr,
           brDc,
@@ -947,7 +902,7 @@ export function CapturaProduccionClient({
         for (const t of targets) {
           const row = disp[t.dr];
           if (!row) continue;
-          const col = CAPTURA_COLUMNS[t.dc];
+          const col = ENTREGA_PT_COLUMNS[t.dc];
           if (!col) continue;
           step += 1;
           updates.push({
@@ -959,37 +914,25 @@ export function CapturaProduccionClient({
         if (updates.length === 0) return;
 
         pushUndo();
-        const skuLookups = new Map<string, string>();
         setRows((prev) => {
           const copy = prev.map((r) => ({ ...r, values: { ...r.values } }));
           for (const u of updates) {
             const idx = copy.findIndex((r) => stableRowId(r) === u.rowId);
             if (idx < 0) continue;
-            if (u.colKey === "sku") {
-              const prevSku = (copy[idx].values.sku ?? "").trim();
-              copy[idx].values[u.colKey] = u.value;
-              if (u.value.trim() !== "" && u.value.trim() !== prevSku) {
-                skuLookups.set(stableRowId(copy[idx]), u.value);
-              }
-            } else {
-              copy[idx].values[u.colKey] = u.value;
-            }
+            copy[idx].values[u.colKey] = u.value;
             const row = copy[idx];
             if (row.id != null) scheduleSave(row);
             else if (shouldPersistRow(row)) scheduleSave(row);
           }
           return ensureTrailing(copy);
         });
-        for (const [sid, sku] of skuLookups) {
-          void runSkuLookupForRow(sid, sku);
-        }
       };
 
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [commitEdit, pushUndo, ensureTrailing, scheduleSave, runSkuLookupForRow]
+    [commitEdit, pushUndo, ensureTrailing, scheduleSave]
   );
 
   const beginEdit = useCallback((dr: number, dc: number, initial: string) => {
@@ -1011,7 +954,7 @@ export function CapturaProduccionClient({
         if (!row) continue;
         const id = stableRowId(row);
         for (let c = c0; c <= c1; c++) {
-          set.add(cellKey(id, CAPTURA_COLUMNS[c].key));
+          set.add(cellKey(id, ENTREGA_PT_COLUMNS[c].key));
         }
       }
       return set;
@@ -1022,7 +965,7 @@ export function CapturaProduccionClient({
   const moveFocus = useCallback(
     (dr: number, dc: number, extend: boolean) => {
       const maxR = displayRows.length - 1;
-      const maxC = CAPTURA_COLUMNS.length - 1;
+      const maxC = ENTREGA_PT_COLUMNS.length - 1;
       const nr = Math.max(0, Math.min(maxR, dr));
       const nc = Math.max(0, Math.min(maxC, dc));
       setFocus({ dr: nr, dc: nc });
@@ -1032,7 +975,7 @@ export function CapturaProduccionClient({
         anchorRef.current = { dr: nr, dc: nc };
         const row = displayRows[nr];
         if (row) {
-          setSelected(new Set([cellKey(stableRowId(row), CAPTURA_COLUMNS[nc].key)]));
+          setSelected(new Set([cellKey(stableRowId(row), ENTREGA_PT_COLUMNS[nc].key)]));
         }
       }
     },
@@ -1070,7 +1013,7 @@ export function CapturaProduccionClient({
       const row = displayRows[dr];
       if (!row) return;
       const id = stableRowId(row);
-      const ck = cellKey(id, CAPTURA_COLUMNS[dc].key);
+      const ck = cellKey(id, ENTREGA_PT_COLUMNS[dc].key);
 
       if (e.ctrlKey || e.metaKey) {
         isSelectDraggingRef.current = false;
@@ -1113,7 +1056,7 @@ export function CapturaProduccionClient({
 
       const f = focusRef.current;
       const originDr = Math.min(Math.max(0, f.dr), dispNow.length - 1);
-      const originDc = Math.min(Math.max(0, f.dc), CAPTURA_COLUMNS.length - 1);
+      const originDc = Math.min(Math.max(0, f.dc), ENTREGA_PT_COLUMNS.length - 1);
 
       /** Un solo valor en un solo destino → mismo flujo que F2/doble clic/teclear (commitEdit). */
       if (matrix.length === 1 && matrix[0].length === 1) {
@@ -1135,7 +1078,6 @@ export function CapturaProduccionClient({
           return;
         }
         pushUndo();
-        const skuLookups = new Map<string, string>();
         setRows((prev) => {
           const copy = prev.map((r) => ({
             ...r,
@@ -1145,30 +1087,17 @@ export function CapturaProduccionClient({
             const { rowId, colKey } = parseCellKey(k);
             const idx = copy.findIndex((r) => stableRowId(r) === rowId);
             if (idx < 0) continue;
-            if (colKey === "sku") {
-              const prevSku = (copy[idx].values.sku ?? "").trim();
-              copy[idx].values[colKey] = val;
-              const nextSku = val.trim();
-              if (nextSku !== "" && nextSku !== prevSku) {
-                skuLookups.set(stableRowId(copy[idx]), val);
-              }
-            } else {
-              copy[idx].values[colKey] = val;
-            }
+            copy[idx].values[colKey] = val;
             const row = copy[idx];
             if (row.id != null) scheduleSave(row);
             else if (shouldPersistRow(row)) scheduleSave(row);
           }
           return ensureTrailing(copy);
         });
-        for (const [rowStableId, sku] of skuLookups) {
-          void runSkuLookupForRow(rowStableId, sku);
-        }
         return;
       }
 
       pushUndo();
-      const skuLookupsMatrix = new Map<string, string>();
       setRows((prev) => {
         let copy = prev.map((r) => ({
           ...r,
@@ -1197,22 +1126,12 @@ export function CapturaProduccionClient({
           if (dr < 0 || dr >= disp.length) continue;
           for (let c = 0; c < line.length; c++) {
             const dc = originDc + c;
-            if (dc < 0 || dc >= CAPTURA_COLUMNS.length) continue;
-            const col = CAPTURA_COLUMNS[dc];
+            if (dc < 0 || dc >= ENTREGA_PT_COLUMNS.length) continue;
+            const col = ENTREGA_PT_COLUMNS[dc];
             const rowSnap = disp[dr];
             const idx = copy.findIndex((x) => stableRowId(x) === stableRowId(rowSnap));
             if (idx < 0) continue;
-            if (col.key === "sku") {
-              const prevSku = (copy[idx].values.sku ?? "").trim();
-              const pasted = line[c];
-              copy[idx].values[col.key] = pasted;
-              const nextSku = pasted.trim();
-              if (nextSku !== "" && nextSku !== prevSku) {
-                skuLookupsMatrix.set(stableRowId(copy[idx]), pasted);
-              }
-            } else {
-              copy[idx].values[col.key] = line[c];
-            }
+            copy[idx].values[col.key] = line[c];
             const updated = copy[idx];
             if (updated.id != null) scheduleSave(updated);
             else if (shouldPersistRow(updated)) scheduleSave(updated);
@@ -1220,9 +1139,6 @@ export function CapturaProduccionClient({
         }
         return ensureTrailing(copy);
       });
-      for (const [rowStableId, sku] of skuLookupsMatrix) {
-        void runSkuLookupForRow(rowStableId, sku);
-      }
     },
     [
       selected,
@@ -1231,7 +1147,6 @@ export function CapturaProduccionClient({
       pushUndo,
       ensureTrailing,
       scheduleSave,
-      runSkuLookupForRow,
       commitEdit,
     ]
   );
@@ -1266,7 +1181,7 @@ export function CapturaProduccionClient({
           text = selectionToTsv(selected, displayRows);
         } else {
           const row = displayRows[focus.dr];
-          const col = CAPTURA_COLUMNS[focus.dc];
+          const col = ENTREGA_PT_COLUMNS[focus.dc];
           if (!row || !col) return;
           text = row.values[col.key] ?? "";
         }
@@ -1280,7 +1195,7 @@ export function CapturaProduccionClient({
 
       if (e.key === "F2") {
         e.preventDefault();
-        beginEdit(dr, dc, displayRows[dr]?.values[CAPTURA_COLUMNS[dc].key] ?? "");
+        beginEdit(dr, dc, displayRows[dr]?.values[ENTREGA_PT_COLUMNS[dc].key] ?? "");
         return;
       }
 
@@ -1378,7 +1293,7 @@ export function CapturaProduccionClient({
       isSelectDraggingRef.current = false;
       const row = displayRows[dr];
       if (!row) return;
-      const col = CAPTURA_COLUMNS[dc];
+      const col = ENTREGA_PT_COLUMNS[dc];
       beginEdit(dr, dc, row.values[col.key] ?? "");
     },
     [displayRows, beginEdit]
@@ -1390,7 +1305,7 @@ export function CapturaProduccionClient({
       const { dr, dc } = editing;
       const row = displayRows[dr];
       if (!row) return null;
-      const col = CAPTURA_COLUMNS[dc];
+      const col = ENTREGA_PT_COLUMNS[dc];
       const full = findColumnSuggestion(
         rows,
         col.key,
@@ -1482,7 +1397,7 @@ export function CapturaProduccionClient({
   const beginColumnResize = useCallback((e: React.MouseEvent, colKey: string) => {
     e.preventDefault();
     e.stopPropagation();
-    const col = CAPTURA_COLUMNS.find((c) => c.key === colKey);
+    const col = ENTREGA_PT_COLUMNS.find((c) => c.key === colKey);
     const minW = col?.minWidth ?? 48;
     columnResizeRef.current = {
       key: colKey,
@@ -1498,7 +1413,7 @@ export function CapturaProduccionClient({
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4">
       <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
         <div>
-          <h1 className="text-xl font-semibold text-white">Captura de producción</h1>
+          <h1 className="text-xl font-semibold text-white">Entrega PT</h1>
           <p className="text-sm text-slate-500">
             Planta:{" "}
             <span className="text-slate-300">
@@ -1540,20 +1455,10 @@ export function CapturaProduccionClient({
         </div>
       </div>
 
-      {skuMessage && (
-        <div
-          className={`shrink-0 flex items-center gap-2 rounded-lg border px-3 py-2 text-sm ${
-            skuMessage.type === "miss"
-              ? "border-amber-500/30 bg-amber-500/10 text-amber-200"
-              : "border-emerald-500/25 bg-emerald-500/10 text-emerald-200"
-          }`}
-        >
-          {skuMessage.type === "miss" ? (
-            <AlertCircle className="h-4 w-4 shrink-0" />
-          ) : (
-            <CheckCircle2 className="h-4 w-4 shrink-0" />
-          )}
-          {skuMessage.text}
+      {infoBanner && (
+        <div className="shrink-0 flex items-center gap-2 rounded-lg border border-emerald-500/25 bg-emerald-500/10 px-3 py-2 text-sm text-emerald-200">
+          <CheckCircle2 className="h-4 w-4 shrink-0" />
+          {infoBanner}
         </div>
       )}
 
@@ -1568,7 +1473,7 @@ export function CapturaProduccionClient({
         ref={gridRef}
         tabIndex={0}
         role="grid"
-        aria-label="Hoja de captura"
+        aria-label="Hoja entrega PT"
         onKeyDown={onGridKeyDown}
         className="flex min-h-0 min-w-0 flex-1 flex-col outline-none ring-offset-2 ring-offset-slate-950 focus-visible:ring-2 focus-visible:ring-sky-500/50"
       >
@@ -1594,7 +1499,7 @@ export function CapturaProduccionClient({
                 >
                   <div className="py-2 pr-1 pl-1" />
                 </th>
-                {CAPTURA_COLUMNS.map((col) => {
+                {ENTREGA_PT_COLUMNS.map((col) => {
                   const w = columnWidths[col.key] ?? col.minWidth ?? 96;
                   return (
                     <th
@@ -1666,7 +1571,7 @@ export function CapturaProduccionClient({
                         {rowNumByStableId.get(rowId) ?? "\u00a0"}
                       </div>
                     </td>
-                    {CAPTURA_COLUMNS.map((col, dc) => {
+                    {ENTREGA_PT_COLUMNS.map((col, dc) => {
                       const ck = cellKey(rowId, col.key);
                       const isSel = selected.has(ck);
                       const isFocus = focus.dr === dr && focus.dc === dc;
@@ -1731,7 +1636,7 @@ export function CapturaProduccionClient({
                                   if (ev.key === "Enter") {
                                     ev.preventDefault();
                                     const rowE = displayRows[dr];
-                                    const colE = CAPTURA_COLUMNS[dc];
+                                    const colE = ENTREGA_PT_COLUMNS[dc];
                                     const raw = editBufferRef.current;
                                     const merged = rowE
                                       ? mergeColumnSuggestion(
@@ -1755,7 +1660,7 @@ export function CapturaProduccionClient({
                                   if (ev.key === "Tab") {
                                     ev.preventDefault();
                                     const rowT = displayRows[dr];
-                                    const colT = CAPTURA_COLUMNS[dc];
+                                    const colT = ENTREGA_PT_COLUMNS[dc];
                                     const rawT = editBufferRef.current;
                                     const mergedT = rowT
                                       ? mergeColumnSuggestion(

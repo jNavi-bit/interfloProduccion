@@ -14,7 +14,10 @@ interface DashboardShellProps {
 export function DashboardShell({ user, children }: DashboardShellProps) {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const pathname = usePathname();
-  const isCapturaWide = pathname.startsWith("/dashboard/captura");
+  /** Hojas de datos a pantalla completa (misma UX que captura). */
+  const isFullViewportSheet =
+    pathname.startsWith("/dashboard/captura") ||
+    pathname.startsWith("/dashboard/entrega-pt");
 
   return (
     <div className="flex h-screen w-full overflow-hidden bg-slate-950 text-white antialiased">
@@ -27,14 +30,14 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
       <div className="flex flex-1 flex-col overflow-hidden">
         <main
           className={
-            isCapturaWide
+            isFullViewportSheet
               ? "flex min-h-0 flex-1 flex-col overflow-hidden"
               : "flex-1 overflow-y-auto"
           }
         >
           <div
             className={`mx-auto ${
-              isCapturaWide
+              isFullViewportSheet
                 ? "flex min-h-0 w-full max-w-none flex-1 flex-col px-4 py-3 sm:px-6 sm:py-4"
                 : "max-w-7xl px-4 py-6 sm:px-6 sm:py-8"
             }`}
@@ -50,7 +53,7 @@ export function DashboardShell({ user, children }: DashboardShellProps) {
             </div>
             <div
               className={
-                isCapturaWide ? "flex min-h-0 min-w-0 flex-1 flex-col" : undefined
+                isFullViewportSheet ? "flex min-h-0 min-w-0 flex-1 flex-col" : undefined
               }
             >
               {children}
