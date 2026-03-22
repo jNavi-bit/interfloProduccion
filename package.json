@@ -10,7 +10,6 @@
   },
   "dependencies": {
     "@heroui/react": "^2.8.9",
-    "@heroui/styles": "^3.0.0-beta.3",
     "@supabase/ssr": "^0.8.0",
     "@supabase/supabase-js": "^2.96.0",
     "framer-motion": "^12.34.0",
@@ -20,7 +19,8 @@
     "nextjs-toploader": "^3.9.17",
     "openai": "^6.32.0",
     "react": "19.2.3",
-    "react-dom": "19.2.3"
+    "react-dom": "19.2.3",
+    "xlsx": "^0.18.5"
   },
   "devDependencies": {
     "@tailwindcss/postcss": "^4",

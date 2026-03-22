@@ -4,7 +4,11 @@ import { cookies } from "next/headers";
 import { createClient } from "@/database/utils/supabase/server";
 import type { PlantaValue } from "@/modules/dashboard/plants";
 import { PRODUCCION_TABLE, normalizeRowFromDb, rowToDbPayload } from "./plantConfig";
-import { getProduccionRowsLatest, noRegistroFromDbRow } from "./queries";
+import {
+  getProduccionRowsLatest,
+  getAllProduccionRowsForExport,
+  noRegistroFromDbRow,
+} from "./queries";
 import type { CatalogoSkuResult } from "./types";
 import type { ProduccionRowState } from "./types";
 
@@ -18,6 +22,10 @@ export async function reloadCapturaProduccionSnapshot(
   limitPlusOne: number
 ) {
   return getProduccionRowsLatest(planta, limitPlusOne);
+}
+
+export async function fetchAllProduccionRowsForExcel(planta: PlantaValue) {
+  return getAllProduccionRowsForExport(planta);
 }
 
 export async function saveProduccionRow(

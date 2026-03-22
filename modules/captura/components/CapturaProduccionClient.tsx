@@ -2,7 +2,16 @@
 
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@heroui/react";
-import { Filter, Search, AlertCircle, CheckCircle2, ImageUp } from "lucide-react";
+import {
+  Filter,
+  FilterX,
+  Search,
+  AlertCircle,
+  CheckCircle2,
+  ImageUp,
+  FileSpreadsheet,
+} from "lucide-react";
+import { downloadExcelWorkbook } from "@/lib/excelExport";
 import { createClient } from "@/database/utils/supabase/client";
 import { PLANTA_OPTIONS, type PlantaValue } from "@/modules/dashboard/plants";
 import { CAPTURA_COLUMNS, columnIndex, PRODUCCION_TABLE } from "../plantConfig";
@@ -28,6 +37,7 @@ import {
   loadProduccionRowsOlder,
   deleteProduccionRowsInChunks,
   reloadCapturaProduccionSnapshot,
+  fetchAllProduccionRowsForExcel,
 } from "../actions";
 
 interface CapturaProduccionClientProps {
@@ -65,6 +75,23 @@ function buildInitialRowsState(ir: ProduccionRowState[]): ProduccionRowState[] {
     createBlankRowDeterministic(`init-${i}`)
   );
   return [...base, ...trailing];
+}
+
+/** Exportación: todo lo de BD + ediciones locales sin guardar + filas nuevas sin id. */
+function mergeProduccionDbExportWithLocal(
+  fromDb: ProduccionRowState[],
+  localRows: ProduccionRowState[]
+): ProduccionRowState[] {
+  const clientById = new Map<number, ProduccionRowState>();
+  for (const r of localRows) {
+    if (r.id != null) clientById.set(r.id, r);
+  }
+  const merged = fromDb.map((dbRow) => {
+    if (dbRow.id == null) return dbRow;
+    return clientById.get(dbRow.id) ?? dbRow;
+  });
+  const unsaved = localRows.filter((r) => r.id == null && shouldPersistRow(r));
+  return [...merged, ...unsaved];
 }
 
 function cellKey(rowId: string, colKey: string): string {
@@ -291,6 +318,17 @@ function applyCapturaFiltersOnDisplayOrder(
   );
 }
 
+function capturaFiltersActive(
+  globalSearch: string,
+  columnFilters: Record<string, Set<string> | null>
+): boolean {
+  if (globalSearch.trim() !== "") return true;
+  for (const { key } of CAPTURA_COLUMNS) {
+    if (columnFilters[key] !== null) return true;
+  }
+  return false;
+}
+
 export function CapturaProduccionClient({
   planta,
   initialRows,
@@ -316,6 +354,32 @@ export function CapturaProduccionClient({
 
   const [filterOpenCol, setFilterOpenCol] = useState<string | null>(null);
 
+  const filtersActive = useMemo(
+    () => capturaFiltersActive(globalSearch, columnFilters),
+    [globalSearch, columnFilters]
+  );
+  /** Búsqueda/filtros aplicados o panel de filtro abierto → cargar todas las filas desde BD. */
+  const needsFullDataset = useMemo(
+    () => filtersActive || filterOpenCol !== null,
+    [filtersActive, filterOpenCol]
+  );
+  const needsFullDatasetRef = useRef(false);
+  useEffect(() => {
+    needsFullDatasetRef.current = needsFullDataset;
+  }, [needsFullDataset]);
+  const prevNeedsFullDatasetRef = useRef<boolean | null>(null);
+  const [filterDatasetLoading, setFilterDatasetLoading] = useState(false);
+
+  const clearAllAppliedFilters = useCallback(() => {
+    setGlobalSearch("");
+    setFilterOpenCol(null);
+    setColumnFilters(() => {
+      const o: Record<string, Set<string> | null> = {};
+      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
+      return o;
+    });
+  }, []);
+
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
   const anchorRef = useRef<{ dr: number; dc: number }>({ dr: 0, dc: 0 });
   const [focus, setFocus] = useState<{ dr: number; dc: number }>({ dr: 0, dc: 0 });
@@ -339,6 +403,7 @@ export function CapturaProduccionClient({
 
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
   const [importingImage, setImportingImage] = useState(false);
+  const [exportExcelLoading, setExportExcelLoading] = useState(false);
   const importInputRef = useRef<HTMLInputElement>(null);
   /** Realtime llegó durante edición: refrescar al cerrar la celda. */
   const pendingRemoteReloadRef = useRef(false);
@@ -417,6 +482,39 @@ export function CapturaProduccionClient({
     }
     return m;
   }, [rows]);
+
+  const exportToExcel = useCallback(async () => {
+    setExportExcelLoading(true);
+    setSaveBanner(null);
+    try {
+      const res = await fetchAllProduccionRowsForExcel(planta);
+      if (!res.ok) {
+        setSaveBanner(`Exportación Excel: ${res.error}`);
+        return;
+      }
+      const toExport = mergeProduccionDbExportWithLocal(res.rows, rows);
+      if (toExport.length === 0) {
+        setSaveBanner("No hay filas para exportar.");
+        return;
+      }
+      const headers = ["No. registro", ...CAPTURA_COLUMNS.map((c) => c.label)];
+      const aoa: (string | number)[][] = [headers];
+      for (const row of toExport) {
+        const rowId = stableRowId(row);
+        const nr = row.noRegistro ?? rowNumByStableId.get(rowId);
+        aoa.push([
+          nr != null ? nr : "",
+          ...CAPTURA_COLUMNS.map((c) => row.values[c.key] ?? ""),
+        ]);
+      }
+      const stamp = new Date().toISOString().slice(0, 10);
+      downloadExcelWorkbook(`captura-produccion-${planta}-${stamp}`, [
+        { name: "Captura", rows: aoa },
+      ]);
+    } finally {
+      setExportExcelLoading(false);
+    }
+  }, [planta, rows, rowNumByStableId]);
 
   const clearAllSaveTimers = useCallback(() => {
     for (const t of saveTimers.current.values()) clearTimeout(t);
@@ -502,6 +600,80 @@ export function CapturaProduccionClient({
     return [...list, ...extra];
   }, []);
 
+  useEffect(() => {
+    const prev = prevNeedsFullDatasetRef.current;
+
+    if (!needsFullDataset) {
+      prevNeedsFullDatasetRef.current = false;
+      if (prev === true) {
+        let cancelled = false;
+        void (async () => {
+          setFilterDatasetLoading(true);
+          clearAllSaveTimers();
+          try {
+            const snap = await reloadCapturaProduccionSnapshot(planta, PAGE_SIZE + 1);
+            if (cancelled) return;
+            setHasMoreOlder(snap.hasMoreOlder);
+            undoStack.current = [];
+            redoStack.current = [];
+            setEditing(null);
+            setSelected(new Set());
+            setRows(ensureTrailing(orderRowsWithEmptyFechaLast(cloneRows(snap.rows))));
+            requestAnimationFrame(() => {
+              const sc = scrollRef.current;
+              if (sc) sc.scrollTop = sc.scrollHeight;
+            });
+          } catch {
+            if (!cancelled) {
+              setSaveBanner("No se pudo restaurar la vista al quitar filtros.");
+              setTimeout(() => setSaveBanner(null), 5000);
+            }
+          } finally {
+            if (!cancelled) setFilterDatasetLoading(false);
+          }
+        })();
+        return () => {
+          cancelled = true;
+        };
+      }
+      return;
+    }
+
+    prevNeedsFullDatasetRef.current = true;
+    setFilterDatasetLoading(true);
+    let cancelled = false;
+    const debounceMs = filterOpenCol !== null ? 0 : 350;
+    const timer = setTimeout(() => {
+      void (async () => {
+        try {
+          const res = await fetchAllProduccionRowsForExcel(planta);
+          if (cancelled) return;
+          if (!res.ok) {
+            setSaveBanner(`Búsqueda/filtros: ${res.error}`);
+            return;
+          }
+          setSaveBanner(null);
+          setRows((prevRows) =>
+            ensureTrailing(
+              orderRowsWithEmptyFechaLast(
+                mergeProduccionDbExportWithLocal(res.rows, prevRows)
+              )
+            )
+          );
+          setHasMoreOlder(false);
+        } finally {
+          if (!cancelled) setFilterDatasetLoading(false);
+        }
+      })();
+    }, debounceMs);
+
+    return () => {
+      cancelled = true;
+      clearTimeout(timer);
+      setFilterDatasetLoading(false);
+    };
+  }, [needsFullDataset, filterOpenCol, planta, clearAllSaveTimers, ensureTrailing]);
+
   const reloadFromDb = useCallback(async () => {
     if (editingRef.current) {
       pendingRemoteReloadRef.current = true;
@@ -509,6 +681,28 @@ export function CapturaProduccionClient({
     }
     clearAllSaveTimers();
     try {
+      if (needsFullDatasetRef.current) {
+        const res = await fetchAllProduccionRowsForExcel(planta);
+        if (!res.ok) {
+          setSaveBanner(res.error);
+          setTimeout(() => setSaveBanner(null), 5000);
+          return;
+        }
+        setHasMoreOlder(false);
+        undoStack.current = [];
+        redoStack.current = [];
+        setEditing(null);
+        setSelected(new Set());
+        setSkuMessage(null);
+        setSaveBanner(null);
+        setRows((prev) =>
+          ensureTrailing(
+            orderRowsWithEmptyFechaLast(mergeProduccionDbExportWithLocal(res.rows, prev))
+          )
+        );
+        return;
+      }
+
       const snap = await reloadCapturaProduccionSnapshot(planta, PAGE_SIZE + 1);
       setHasMoreOlder(snap.hasMoreOlder);
       undoStack.current = [];
@@ -570,7 +764,7 @@ export function CapturaProduccionClient({
   }, [planta, reloadFromDb]);
 
   const loadOlderRows = useCallback(async () => {
-    if (!hasMoreOlder || loadingMore) return;
+    if (needsFullDatasetRef.current || !hasMoreOlder || loadingMore) return;
 
     const el = scrollRef.current;
     const beforeScrollHeight = el?.scrollHeight ?? 0;
@@ -1238,6 +1432,15 @@ export function CapturaProduccionClient({
 
   const onGridKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
+      const el = e.target as HTMLElement | null;
+      if (
+        el?.closest("[data-grid-filter-panel]") ||
+        (typeof document !== "undefined" &&
+          document.activeElement?.closest?.("[data-grid-filter-panel]"))
+      ) {
+        return;
+      }
+
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -1517,7 +1720,7 @@ export function CapturaProduccionClient({
               startContent={<Search className="h-4 w-4 text-slate-500" />}
               classNames={{
                 inputWrapper:
-                  "bg-slate-900/80 border border-white/[0.08] data-[hover=true]:border-white/15",
+                  "border border-sky-500/35 bg-slate-950/80 shadow-[0_0_20px_-10px_rgba(34,211,238,0.35)] data-[hover=true]:border-fuchsia-400/40",
               }}
             />
           </div>
@@ -1537,8 +1740,36 @@ export function CapturaProduccionClient({
             <ImageUp className="h-4 w-4" />
             {importingImage ? "Analizando..." : "Subir reporte"}
           </button>
+          <button
+            type="button"
+            onClick={() => void exportToExcel()}
+            disabled={exportExcelLoading}
+            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-600/15 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+          >
+            <FileSpreadsheet className="h-4 w-4" />
+            {exportExcelLoading ? "Exportando…" : "Excel"}
+          </button>
         </div>
       </div>
+
+      {filterDatasetLoading && (
+        <div className="shrink-0 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
+          Cargando todas las filas para búsqueda y filtros…
+        </div>
+      )}
+
+      {(filtersActive || filterOpenCol !== null) && (
+        <div className="flex shrink-0 items-center gap-2">
+          <button
+            type="button"
+            onClick={clearAllAppliedFilters}
+            className="inline-flex items-center gap-2 rounded-lg border border-orange-500/35 bg-orange-950/40 px-3 py-1.5 text-xs font-medium text-orange-100 shadow-md transition hover:bg-orange-900/50"
+          >
+            <FilterX className="h-3.5 w-3.5 text-slate-400" />
+            Quitar filtros y búsqueda
+          </button>
+        </div>
+      )}
 
       {skuMessage && (
         <div
@@ -1575,17 +1806,17 @@ export function CapturaProduccionClient({
         <div
           ref={scrollRef}
           onScroll={handleScroll}
-          className="min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-white/[0.08] bg-slate-900/40"
+          className="min-h-0 min-w-0 flex-1 overflow-auto rounded-xl border border-sky-500/25 bg-[rgb(22_42_74_/_0.55)] shadow-inner shadow-sky-900/30"
         >
           <table
             className="min-w-max border-collapse text-sm select-none"
             style={{ tableLayout: "fixed" }}
           >
-            <thead className="sticky top-0 z-20 bg-slate-900/95 shadow-sm backdrop-blur-sm">
+            <thead className="sticky top-0 z-20 border-b border-sky-500/30 bg-gradient-to-r from-blue-950/95 via-slate-950/98 to-violet-950/90 shadow-md backdrop-blur-sm">
               <tr>
                 <th
                   aria-hidden
-                  className="min-w-0 border-b border-r border-white/[0.06] px-0 py-0 text-left font-normal"
+                  className="min-w-0 border-b border-r border-sky-500/20 px-0 py-0 text-left font-normal"
                   style={{
                     width: ROW_NUM_COL_PX,
                     minWidth: ROW_NUM_COL_PX,
@@ -1599,7 +1830,7 @@ export function CapturaProduccionClient({
                   return (
                     <th
                       key={col.key}
-                      className="relative min-w-0 border-b border-white/[0.08] px-0 py-0 text-left font-medium text-slate-300"
+                      className="relative min-w-0 border-b border-sky-500/25 px-0 py-0 text-left font-medium text-sky-100"
                       style={{ width: w, minWidth: w, maxWidth: w }}
                     >
                       <div className="flex items-center gap-0.5 py-2 pl-2 pr-1">
@@ -1608,7 +1839,7 @@ export function CapturaProduccionClient({
                         </span>
                         <button
                           type="button"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-slate-500 transition hover:bg-white/5 hover:text-slate-300"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sky-300/80 transition hover:bg-fuchsia-600/25 hover:text-fuchsia-100"
                           aria-label={`Filtro ${col.label}`}
                           onClick={(ev) => {
                             ev.stopPropagation();
@@ -1644,12 +1875,26 @@ export function CapturaProduccionClient({
               </tr>
             </thead>
             <tbody>
-              {displayRows.map((row, dr) => {
+              {displayRows.length === 0 ? (
+                <tr>
+                  <td
+                    colSpan={CAPTURA_COLUMNS.length + 1}
+                    className="border-b border-slate-700/40 px-3 py-12 text-center text-sm text-slate-500"
+                  >
+                    {filterDatasetLoading
+                      ? "Cargando datos…"
+                      : filtersActive
+                        ? "Ningún registro coincide con la búsqueda o los filtros de columna."
+                        : "Sin filas."}
+                  </td>
+                </tr>
+              ) : (
+                displayRows.map((row, dr) => {
                 const rowId = stableRowId(row);
                 return (
                   <tr
                     key={rowId}
-                    className="border-b border-white/[0.04] hover:bg-white/[0.02]"
+                    className="border-b border-white/[0.06] hover:bg-sky-500/10"
                   >
                     <td
                       className="min-w-0 border-r border-white/[0.06] px-0 py-0 align-middle text-right tabular-nums"
@@ -1686,9 +1931,9 @@ export function CapturaProduccionClient({
                           data-captura-dr={dr}
                           data-captura-dc={dc}
                           className={`relative min-w-0 border-r border-white/[0.04] px-0 py-0 align-middle ${
-                            isSel ? "bg-sky-500/15" : ""
-                          } ${isFocus && !isEdit ? "ring-1 ring-inset ring-sky-400/60" : ""} ${
-                            inFillPreview ? "bg-amber-500/15 ring-1 ring-inset ring-amber-400/40" : ""
+                            isSel ? "bg-sky-500/20" : ""
+                          } ${isFocus && !isEdit ? "ring-1 ring-inset ring-cyan-400/70" : ""} ${
+                            inFillPreview ? "bg-orange-500/15 ring-1 ring-inset ring-orange-400/50" : ""
                           }`}
                           style={{ width: cw, minWidth: cw, maxWidth: cw }}
                           onMouseDown={(e) => handleCellMouseDown(e, dr, dc)}
@@ -1817,7 +2062,8 @@ export function CapturaProduccionClient({
                     })}
                   </tr>
                 );
-              })}
+              })
+              )}
             </tbody>
           </table>
         </div>
@@ -1857,11 +2103,25 @@ function ColumnFilterPanel({
     setSearch("");
   }, [colKey]);
 
+  const searchInputRef = useRef<HTMLInputElement>(null);
+  useLayoutEffect(() => {
+    const t = window.setTimeout(() => {
+      searchInputRef.current?.focus({ preventScroll: true });
+    }, 0);
+    return () => clearTimeout(t);
+  }, [colKey]);
+
   const filteredOptions = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return options;
     return options.filter((o) => o.toLowerCase().includes(q));
   }, [options, search]);
+
+  const commitApply = () => {
+    if (local.size === 0) onApply(new Set());
+    else if (local.size === options.length) onApply(null);
+    else onApply(new Set(local));
+  };
 
   const ref = useRef<HTMLDivElement>(null);
   const onCloseRef = useRef(onClose);
@@ -1885,76 +2145,87 @@ function ColumnFilterPanel({
   return (
     <div
       ref={ref}
-      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-white/10 bg-slate-800 p-2 shadow-xl"
+      data-grid-filter-panel
+      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-fuchsia-500/35 bg-slate-950/95 p-2 shadow-2xl shadow-violet-900/40 backdrop-blur-md"
       onMouseDown={(e) => e.stopPropagation()}
+      onKeyDown={(e) => e.stopPropagation()}
     >
       <p className="mb-2 px-1 text-xs font-semibold text-slate-400">{label}</p>
-      <input
-        type="search"
-        value={search}
-        onChange={(e) => setSearch(e.target.value)}
-        placeholder="Buscar…"
-        className="mb-2 w-full rounded-lg border border-white/10 bg-slate-900/80 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30"
-        autoComplete="off"
-        aria-label={`Buscar en filtro ${label}`}
-      />
-      <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-white/[0.06] bg-slate-900/40 px-2 py-1.5 text-xs text-slate-300 hover:bg-white/5">
+      <form
+        className="flex flex-col"
+        onSubmit={(e) => {
+          e.preventDefault();
+          commitApply();
+        }}
+        onKeyDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
         <input
-          type="checkbox"
-          checked={allDeselected}
-          onChange={() => {
-            if (allDeselected) setLocal(new Set(options));
-            else setLocal(new Set());
-          }}
+          ref={searchInputRef}
+          type="text"
+          inputMode="search"
+          value={search}
+          onChange={(e) => setSearch(e.target.value)}
+          onKeyDown={(e) => e.stopPropagation()}
+          placeholder="Buscar valores…"
+          enterKeyHint="done"
+          className="mb-2 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-fuchsia-500/30"
+          autoComplete="off"
+          aria-label={`Buscar en filtro ${label}`}
         />
-        <span>Desmarcar todos</span>
-      </label>
-      <div className="max-h-48 overflow-y-auto text-xs">
-        {filteredOptions.length === 0 ? (
-          <p className="px-1 py-2 text-slate-500">Sin coincidencias</p>
-        ) : (
-          filteredOptions.map((opt) => (
-            <label
-              key={opt}
-              className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-white/5"
-            >
-              <input
-                type="checkbox"
-                checked={local.has(opt)}
-                onChange={() => {
-                  setLocal((prev) => {
-                    const n = new Set(prev);
-                    if (n.has(opt)) n.delete(opt);
-                    else n.add(opt);
-                    return n;
-                  });
-                }}
-              />
-              <span className="truncate text-slate-200">{opt}</span>
-            </label>
-          ))
-        )}
-      </div>
-      <div className="mt-2 flex gap-2 border-t border-white/10 pt-2">
-        <button
-          type="button"
-          className="flex-1 rounded-lg bg-white/10 py-1.5 text-xs font-medium text-white hover:bg-white/15"
-          onClick={() => onApply(null)}
-        >
-          Limpiar
-        </button>
-        <button
-          type="button"
-          className="flex-1 rounded-lg bg-sky-600 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
-          onClick={() => {
-            if (local.size === 0) onApply(new Set());
-            else if (local.size === options.length) onApply(null);
-            else onApply(local);
-          }}
-        >
-          Aplicar
-        </button>
-      </div>
+        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-950/40 px-2 py-1.5 text-xs text-violet-100 hover:bg-violet-900/50">
+          <input
+            type="checkbox"
+            checked={allDeselected}
+            onChange={() => {
+              if (allDeselected) setLocal(new Set(options));
+              else setLocal(new Set());
+            }}
+          />
+          <span>Desmarcar todos</span>
+        </label>
+        <div className="max-h-48 overflow-y-auto text-xs">
+          {filteredOptions.length === 0 ? (
+            <p className="px-1 py-2 text-slate-500">Sin coincidencias</p>
+          ) : (
+            filteredOptions.map((opt) => (
+              <label
+                key={opt}
+                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-sky-500/15"
+              >
+                <input
+                  type="checkbox"
+                  checked={local.has(opt)}
+                  onChange={() => {
+                    setLocal((prev) => {
+                      const n = new Set(prev);
+                      if (n.has(opt)) n.delete(opt);
+                      else n.add(opt);
+                      return n;
+                    });
+                  }}
+                />
+                <span className="truncate text-slate-200">{opt}</span>
+              </label>
+            ))
+          )}
+        </div>
+        <div className="mt-2 flex gap-2 border-t border-orange-500/25 pt-2">
+          <button
+            type="button"
+            className="flex-1 rounded-lg bg-red-950/50 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/60"
+            onClick={() => onApply(null)}
+          >
+            Limpiar
+          </button>
+          <button
+            type="submit"
+            className="flex-1 rounded-lg bg-sky-600 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+          >
+            Aplicar
+          </button>
+        </div>
+      </form>
     </div>
   );
 }

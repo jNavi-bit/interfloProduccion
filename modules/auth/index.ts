@@ -1,2 +1,7 @@
 export { LoginPage } from "./components/LoginPage";
-export { signIn, type SignInResult } from "./actions";
+export {
+  signIn,
+  completeMandatoryPasswordChange,
+  type SignInResult,
+  type CompletePasswordChangeResult,
+} from "./actions";

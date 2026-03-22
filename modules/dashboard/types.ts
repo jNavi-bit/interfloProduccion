@@ -5,6 +5,10 @@ export interface UserProfile {
   name: string;
   role: UserRole;
   planta: string;
+  /** Correo de sesión (Auth o columna usuarios.email). */
+  email: string | null;
+  /** Si true, debe completar /dashboard/cambiar-contrasena antes de usar el resto del panel. */
+  mustChangePassword: boolean;
 }
 
 export interface DashboardStats {

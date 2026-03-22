@@ -17,6 +17,7 @@ import {
   LogOut,
   ChevronUp,
   Factory,
+  Lock,
 } from "lucide-react";
 import type { UserProfile } from "../types";
 import { signOut } from "@/modules/auth/actions";
@@ -79,7 +80,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
     <>
       {open && (
         <div
-          className="fixed inset-0 z-40 bg-black/60 backdrop-blur-sm lg:hidden"
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
           onClick={onClose}
           aria-hidden
         />
@@ -88,13 +89,13 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
       <aside
         className={`
           fixed top-0 left-0 z-50 flex h-full w-64 flex-col
-          border-r border-white/[0.06] bg-slate-900
+          border-r border-line bg-nav
           transition-transform duration-300 ease-in-out
           lg:static lg:z-auto lg:translate-x-0
           ${open ? "translate-x-0" : "-translate-x-full"}
         `}
       >
-        <div className="flex h-16 shrink-0 items-center justify-between border-b border-white/[0.06] px-4">
+        <div className="flex h-16 shrink-0 items-center justify-between border-b border-line px-4">
           <Link href="/dashboard" className="flex items-center gap-2">
             <Image
               src="/logoInterflo.png"
@@ -108,7 +109,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
           </Link>
           <button
             onClick={onClose}
-            className="flex h-8 w-8 items-center justify-center rounded-lg text-slate-400 transition hover:bg-white/5 hover:text-white lg:hidden"
+            className="flex h-8 w-8 items-center justify-center rounded-xl text-mute transition hover:bg-hl hover:text-strong lg:hidden"
           >
             <X className="h-5 w-5" />
           </button>
@@ -133,8 +134,8 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
                     transition-colors duration-150
                     ${
                       isActive
-                        ? "bg-sky-500/10 text-sky-400"
-                        : "text-slate-400 hover:bg-white/5 hover:text-slate-200"
+                        ? "bg-gradient-to-r from-sky-500/20 to-violet-500/15 text-white ring-1 ring-sky-400/30"
+                        : "text-mute hover:bg-hl hover:text-white"
                     }
                   `}
                 >
@@ -144,7 +145,6 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
               );
             })}
           </div>
-
         </nav>
 
         <PlantaDropdown
@@ -156,21 +156,21 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
           router={router}
         />
 
-        <div className="shrink-0 border-t border-white/[0.06] p-4">
+        <div className="shrink-0 border-t border-line p-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-sky-500/15 text-sm font-bold text-sky-400">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/25 to-sky-500/20 text-sm font-bold text-violet-100 ring-1 ring-violet-400/25">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">
-              <p className="truncate text-sm font-medium text-white">
+              <p className="truncate text-sm font-medium text-strong">
                 {user.name}
               </p>
-              <p className="text-xs capitalize text-slate-500">{user.role}</p>
+              <p className="text-xs capitalize text-subtle">{user.role}</p>
             </div>
             <form action={signOut} className="shrink-0">
               <button
                 type="submit"
-                className="flex h-8 w-8 items-center justify-center rounded-lg text-rose-400/80 transition hover:bg-rose-500/10 hover:text-rose-300"
+                className="flex h-8 w-8 items-center justify-center rounded-xl text-rose-400/80 transition hover:bg-rose-500/10 hover:text-rose-300"
                 title="Cerrar sesión"
                 aria-label="Cerrar sesión"
               >
@@ -222,8 +222,8 @@ function PlantaDropdown({
   }
 
   return (
-    <div className="shrink-0 border-t border-white/[0.06] px-3 py-3" ref={ref}>
-      <div className="rounded-xl border border-amber-500/15 bg-gradient-to-br from-amber-500/[0.06] to-orange-500/[0.04] p-3">
+    <div className="shrink-0 border-t border-line px-3 py-3" ref={ref}>
+      <div className="rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-500/[0.07] to-orange-500/[0.04] p-3">
         <div className="mb-2 flex items-center gap-2">
           <Factory className="h-3.5 w-3.5 text-amber-400/80" strokeWidth={2.5} />
           <span className="text-[11px] font-semibold uppercase tracking-widest text-amber-400/70">
@@ -231,35 +231,58 @@ function PlantaDropdown({
           </span>
         </div>
         <div className="relative">
-          <button
-            type="button"
-            disabled={!isAdmin}
-            onClick={() => isAdmin && setIsOpen((prev) => !prev)}
-            className="flex h-10 w-full items-center justify-between rounded-xl border border-orange-500/25 bg-slate-900/80 px-3.5 text-sm font-medium text-slate-200 outline-none transition hover:border-orange-400/40 hover:bg-slate-800 focus:border-orange-400/50 focus:ring-2 focus:ring-orange-500/20 disabled:cursor-not-allowed disabled:border-white/10 disabled:text-slate-500"
-          >
-            {activeLabel}
-            <ChevronUp
-              className={`h-4 w-4 text-slate-400 transition-transform duration-200 ${isOpen ? "" : "rotate-180"}`}
-              strokeWidth={2}
-            />
-          </button>
+          {isAdmin ? (
+            <>
+              <button
+                type="button"
+                onClick={() => setIsOpen((prev) => !prev)}
+                className="flex h-10 w-full items-center justify-between rounded-xl border border-amber-500/25 bg-nav/80 px-3.5 text-sm font-medium text-main outline-none transition hover:border-amber-400/40 hover:bg-hl focus:border-amber-400/50 focus:ring-2 focus:ring-amber-500/20"
+                aria-haspopup="listbox"
+                aria-expanded={isOpen}
+              >
+                {activeLabel}
+                <ChevronUp
+                  className={`h-4 w-4 text-mute transition-transform duration-200 ${isOpen ? "" : "rotate-180"}`}
+                  strokeWidth={2}
+                />
+              </button>
 
-          {isOpen && (
-            <div className="absolute bottom-full left-0 z-50 mb-1 w-full overflow-hidden rounded-xl border border-white/10 bg-slate-800 py-1 shadow-xl shadow-black/40">
-              {availableOptions.map((option) => (
-                <button
-                  key={option.value}
-                  type="button"
-                  onClick={() => selectPlanta(option.value)}
-                  className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
-                    option.value === activePlanta
-                      ? "font-semibold text-orange-400"
-                      : "font-medium text-slate-300 hover:bg-white/[0.06] hover:text-white"
-                  }`}
+              {isOpen && (
+                <div
+                  className="absolute bottom-full left-0 z-50 mb-1 w-full overflow-hidden rounded-xl border border-line bg-card py-1 shadow-xl shadow-black/30"
+                  role="listbox"
                 >
-                  {option.label}
-                </button>
-              ))}
+                  {availableOptions.map((option) => (
+                    <button
+                      key={option.value}
+                      type="button"
+                      role="option"
+                      aria-selected={option.value === activePlanta}
+                      onClick={() => selectPlanta(option.value)}
+                      className={`flex w-full items-center px-3.5 py-2.5 text-left text-sm transition ${
+                        option.value === activePlanta
+                          ? "font-semibold text-amber-400"
+                          : "font-medium text-main hover:bg-hl hover:text-strong"
+                      }`}
+                    >
+                      {option.label}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </>
+          ) : (
+            <div
+              className="rounded-xl border border-line bg-field px-3.5 py-2.5"
+              title="Solo un administrador puede cambiar de planta. La vista siempre usa tu planta asignada."
+            >
+              <div className="flex items-center justify-between gap-2">
+                <span className="text-sm font-medium text-main">{activeLabel}</span>
+                <Lock className="h-3.5 w-3.5 shrink-0 text-subtle" aria-hidden />
+              </div>
+              <p className="mt-1.5 text-[10px] leading-snug text-subtle">
+                Planta asignada a tu cuenta. Pide a un administrador un cambio si aplica.
+              </p>
             </div>
           )}
         </div>

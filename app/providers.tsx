@@ -1,18 +1,15 @@
 "use client";
 
 import type { PropsWithChildren } from "react";
-import { ThemeProvider } from "next-themes";
 import NextTopLoader from "nextjs-toploader";
-import { ToastProvider } from "@heroui/react";
+import { HeroUIProvider, ToastProvider } from "@heroui/react";
 
-export default function Providers(props: PropsWithChildren) {
-	return (
-		<>
-			<NextTopLoader showSpinner={false} color="blue" />
-			<ThemeProvider attribute="class">
-				<ToastProvider />
-				{props.children}
-			</ThemeProvider>
-		</>
-	);
+export default function Providers({ children }: PropsWithChildren) {
+  return (
+    <HeroUIProvider locale="es-MX">
+      <NextTopLoader showSpinner={false} color="#22d3ee" />
+      <ToastProvider />
+      {children}
+    </HeroUIProvider>
+  );
 }

@@ -1,10 +1,10 @@
-import { PlaceholderPage } from "@/modules/dashboard";
+import { redirect } from "next/navigation";
+import { getUserProfile } from "@/modules/dashboard";
+import { ConfiguracionClient } from "@/modules/configuracion/components/ConfiguracionClient";
 
-export default function ConfiguracionPage() {
-  return (
-    <PlaceholderPage
-      title="Configuración"
-      description="Ajusta parámetros del sistema, máquinas, turnos y catálogos."
-    />
-  );
+export default async function ConfiguracionPage() {
+  const user = await getUserProfile();
+  if (!user) redirect("/login");
+
+  return <ConfiguracionClient isAdmin={user.role === "admin"} />;
 }

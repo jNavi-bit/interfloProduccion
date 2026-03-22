@@ -4,7 +4,11 @@ import { cookies } from "next/headers";
 import { createClient } from "@/database/utils/supabase/server";
 import type { PlantaValue } from "@/modules/dashboard/plants";
 import { PROD_TERMINADO_TABLE, normalizeRowFromDb, rowToDbPayload } from "./plantConfig";
-import { getEntregaPtRowsLatest, noRegistroFromDbRow } from "./queries";
+import {
+  getEntregaPtRowsLatest,
+  getAllEntregaPtRowsForExport,
+  noRegistroFromDbRow,
+} from "./queries";
 import type { EntregaPtRowState } from "./types";
 
 export type EntregaPtSaveRowResult =
@@ -13,6 +17,10 @@ export type EntregaPtSaveRowResult =
 
 export async function reloadEntregaPtSnapshot(planta: PlantaValue, limitPlusOne: number) {
   return getEntregaPtRowsLatest(planta, limitPlusOne);
+}
+
+export async function fetchAllEntregaPtRowsForExcel(planta: PlantaValue) {
+  return getAllEntregaPtRowsForExport(planta);
 }
 
 export async function saveEntregaPtRow(

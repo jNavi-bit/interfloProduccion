@@ -1,17 +1,119 @@
 @import "tailwindcss";
-@import "@heroui/styles";
+@config "../tailwind.config.mjs";
+
+@theme {
+  --color-app: #020617;
+  --color-nav: #020617;
+  --color-card: #0f172a;
+  --color-field: #0c1222;
+  --color-hl: #1e1b4b;
+  --color-line: #334155;
+
+  --color-subtle: #94a3b8;
+  --color-mute: #cbd5e1;
+  --color-main: #e2e8f0;
+  --color-strong: #f8fafc;
+
+  --color-surface: #0f172a;
+  --color-separator: #475569;
+}
+
+/* Scrollbars con tinte azul/violeta */
+.dark,
+.dark * {
+  scrollbar-color: oklch(48% 0.12 260) oklch(18% 0.04 260);
+}
+.dark *::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+.dark *::-webkit-scrollbar-track {
+  background: oklch(16% 0.04 260);
+  border-radius: 10px;
+}
+.dark *::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, oklch(52% 0.14 250), oklch(48% 0.12 290));
+  border-radius: 10px;
+  border: 2px solid oklch(16% 0.04 260);
+}
+.dark *::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, oklch(58% 0.16 250), oklch(52% 0.14 290));
+}
 
 @layer utilities {
   .font-display {
     font-family: var(--font-plus-jakarta), var(--font-geist-sans), ui-sans-serif, sans-serif;
   }
-  .text-foreground { color: var(--foreground); }
-  .text-muted { color: var(--muted); }
-  .text-accent { color: var(--accent); }
-  .text-accent-foreground { color: var(--accent-foreground); }
-  .text-danger { color: var(--danger); }
-  .bg-surface { background-color: var(--surface); }
-  .bg-surface-secondary { background-color: var(--surface-secondary); }
-  .bg-default { background-color: var(--default); }
-  .border-border { border-color: var(--border); }
+
+  /* Tarjetas / contenedores con borde en gradiente (sin blanco) */
+  .gradient-ring-surface {
+    border: 1px solid transparent;
+    background:
+      linear-gradient(rgb(15 23 42 / 0.92), rgb(2 6 23 / 0.96)) padding-box,
+      linear-gradient(135deg, rgb(56 189 248 / 0.55), rgb(168 85 247 / 0.5), rgb(249 115 22 / 0.45))
+        border-box;
+  }
+}
+
+/* Tablas: fondo oscuro, encabezados en gradiente azul→morado, acentos vivos */
+@layer components {
+  .ui-table-wrap {
+    overflow-x: auto;
+    border-radius: 1rem;
+    border: 1px solid rgb(56 189 248 / 0.35);
+    background: linear-gradient(
+      165deg,
+      rgb(26 44 78 / 0.96) 0%,
+      rgb(18 36 64 / 0.97) 55%,
+      rgb(42 38 95 / 0.38) 100%
+    );
+    box-shadow:
+      0 0 0 1px rgb(168 85 247 / 0.12) inset,
+      0 12px 40px -12px rgb(0 0 0 / 0.65),
+      0 0 48px -20px rgb(56 189 248 / 0.2);
+  }
+
+  .ui-table {
+    width: 100%;
+    border-collapse: collapse;
+    background-color: rgb(22 42 74 / 0.72);
+    font-size: 0.875rem;
+    line-height: 1.25rem;
+    color: rgb(226 232 240);
+  }
+
+  .ui-table thead tr {
+    border-bottom: 1px solid rgb(56 189 248 / 0.35);
+    background: linear-gradient(
+      90deg,
+      rgb(30 58 138 / 0.55) 0%,
+      rgb(88 28 135 / 0.45) 50%,
+      rgb(154 52 18 / 0.25) 100%
+    );
+  }
+
+  .ui-table th {
+    padding: 0.625rem 0.75rem;
+    text-align: left;
+    font-size: 0.75rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    color: rgb(186 230 253);
+  }
+
+  .ui-table tbody tr {
+    border-bottom: 1px solid rgb(51 65 85 / 0.45);
+    transition: background-color 0.15s ease;
+  }
+
+  .ui-table tbody tr:hover {
+    background-color: rgb(56 189 248 / 0.08);
+  }
+
+  .ui-table td {
+    padding: 0.5rem 0.75rem;
+    vertical-align: top;
+    color: rgb(203 213 225);
+  }
 }

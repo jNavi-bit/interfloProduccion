@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Geist, Geist_Mono, Plus_Jakarta_Sans } from "next/font/google";
 import { Suspense } from "react";
+import Providers from "./providers";
 import "./globals.css";
 
 const geistSans = Geist({
@@ -34,7 +35,9 @@ export default function RootLayout({
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${plusJakarta.variable} min-h-screen w-full overflow-x-hidden font-sans antialiased`}
       >
-        <Suspense fallback={null}>{children}</Suspense>
+        <Providers>
+          <Suspense fallback={null}>{children}</Suspense>
+        </Providers>
       </body>
     </html>
   );

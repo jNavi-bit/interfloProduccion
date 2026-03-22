@@ -21,9 +21,11 @@ const columns: { key: keyof CatalogoProducto; label: string; align?: "right" }[]
 export function InventarioTable({ productos, hasFilters }: InventarioTableProps) {
   if (productos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center rounded-xl border border-white/[0.06] bg-slate-900/30 py-16">
-        <Package className="h-10 w-10 text-slate-600" strokeWidth={1.5} />
-        <p className="mt-4 text-sm text-slate-500">
+      <div className="gradient-ring-surface flex flex-col items-center justify-center rounded-2xl py-16 shadow-xl shadow-violet-950/30">
+        <div className="rounded-2xl bg-gradient-to-br from-violet-600/30 to-orange-500/20 p-4 ring-2 ring-fuchsia-500/25">
+          <Package className="h-10 w-10 text-fuchsia-300" strokeWidth={1.5} />
+        </div>
+        <p className="mt-4 text-sm text-slate-400">
           {hasFilters
             ? "No se encontraron registros con los filtros aplicados."
             : "No hay registros en el catálogo."}
@@ -34,33 +36,28 @@ export function InventarioTable({ productos, hasFilters }: InventarioTableProps)
 
   return (
     <div>
-      <p className="mb-2 text-xs text-slate-500">
+      <p className="mb-2 text-xs text-sky-300/70">
         Mostrando {productos.length} registro{productos.length !== 1 ? "s" : ""}
         {hasFilters ? " (filtrado)" : ""}
       </p>
-      <div className="overflow-hidden rounded-xl border border-white/[0.06] bg-slate-900/30">
+      <div className="ui-table-wrap">
         <div className="overflow-x-auto">
-          <table className="w-full text-sm">
+          <table className="ui-table">
             <thead>
-              <tr className="border-b border-white/[0.06] text-left">
+              <tr>
                 {columns.map((col) => (
                   <th
                     key={col.key}
-                    className={`whitespace-nowrap px-4 py-3 font-medium text-slate-400 ${
-                      col.align === "right" ? "text-right" : ""
-                    }`}
+                    className={`whitespace-nowrap px-4 py-3 ${col.align === "right" ? "text-right" : ""}`}
                   >
                     {col.label}
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-white/[0.04]">
+            <tbody>
               {productos.map((row) => (
-                <tr
-                  key={row.id}
-                  className="transition-colors hover:bg-white/[0.02]"
-                >
+                <tr key={row.id}>
                   {columns.map((col) => {
                     const value = row[col.key];
                     const isCode = col.key === "codigo_unico";
@@ -73,7 +70,7 @@ export function InventarioTable({ productos, hasFilters }: InventarioTableProps)
                           col.align === "right"
                             ? "whitespace-nowrap text-right font-mono text-slate-200"
                             : isCode
-                              ? "whitespace-nowrap font-mono font-medium text-sky-400"
+                              ? "whitespace-nowrap font-mono font-semibold text-cyan-300"
                               : isComponent
                                 ? "min-w-[200px] max-w-[360px] text-slate-300"
                                 : "whitespace-nowrap text-slate-300"
@@ -92,4 +89,3 @@ export function InventarioTable({ productos, hasFilters }: InventarioTableProps)
     </div>
   );
 }
-

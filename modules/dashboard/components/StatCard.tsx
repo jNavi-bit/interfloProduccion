@@ -9,27 +9,24 @@ interface StatCardProps {
 }
 
 const colorMap = {
-  amber: "bg-amber-500/10 text-amber-400 ring-amber-500/20",
-  emerald: "bg-emerald-500/10 text-emerald-400 ring-emerald-500/20",
-  sky: "bg-sky-500/10 text-sky-400 ring-sky-500/20",
-  violet: "bg-violet-500/10 text-violet-400 ring-violet-500/20",
+  amber: "bg-gradient-to-br from-amber-400 via-orange-500 to-red-600 text-white shadow-lg shadow-orange-500/35",
+  emerald: "bg-gradient-to-br from-emerald-400 via-teal-500 to-cyan-700 text-white shadow-lg shadow-emerald-500/35",
+  sky: "bg-gradient-to-br from-sky-400 via-blue-500 to-indigo-700 text-white shadow-lg shadow-sky-500/35",
+  violet: "bg-gradient-to-br from-violet-400 via-fuchsia-600 to-purple-800 text-white shadow-lg shadow-violet-500/35",
 };
 
 export function StatCard({ label, value, subtitle, icon, color }: StatCardProps) {
   return (
-    <div className="rounded-2xl border border-white/[0.06] bg-slate-900/50 p-5 backdrop-blur-sm">
-      <div className="flex items-start justify-between">
+    <div className="gradient-ring-surface relative overflow-hidden rounded-2xl p-5 shadow-xl shadow-blue-950/40 transition duration-300 hover:-translate-y-0.5 hover:shadow-2xl hover:shadow-violet-900/25">
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-sky-500/[0.07] via-transparent to-fuchsia-600/[0.08]" />
+      <div className="relative flex items-start justify-between gap-3">
         <div className="min-w-0 flex-1">
-          <p className="text-sm font-medium text-slate-400">{label}</p>
-          <p className="mt-2 truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">
-            {value}
-          </p>
-          {subtitle && (
-            <p className="mt-1 text-xs text-slate-500">{subtitle}</p>
-          )}
+          <p className="text-sm font-medium text-sky-200/80">{label}</p>
+          <p className="mt-2 truncate text-2xl font-bold tracking-tight text-white sm:text-3xl">{value}</p>
+          {subtitle && <p className="mt-1 text-xs text-slate-400">{subtitle}</p>}
         </div>
         <div
-          className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-xl ring-1 ${colorMap[color]}`}
+          className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-2xl ring-2 ring-white/10 ${colorMap[color]}`}
         >
           {icon}
         </div>

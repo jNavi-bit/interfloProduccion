@@ -83,3 +83,36 @@ export async function getProduccionRowsLatest(
 
   return { rows, hasMoreOlder };
 }
+
+const EXPORT_PAGE_SIZE = 1000;
+
+/** Todas las filas persistidas (orden: fecha asc, id asc), para exportación Excel. */
+export async function getAllProduccionRowsForExport(
+  planta: PlantaValue
+): Promise<{ ok: true; rows: ProduccionRowState[] } | { ok: false; error: string }> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const table = PRODUCCION_TABLE[planta];
+  const all: ProduccionRowState[] = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order("fecha", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + EXPORT_PAGE_SIZE - 1);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    const batch = data ?? [];
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      all.push(toProduccionRowState(planta, row as Record<string, unknown>));
+    }
+    if (batch.length < EXPORT_PAGE_SIZE) break;
+    offset += EXPORT_PAGE_SIZE;
+  }
+  return { ok: true, rows: all };
+}

@@ -20,26 +20,71 @@ export const getUserProfile = cache(
 
     if (!user) return null;
 
-    const { data } = await supabase
-      .from("usuarios")
-      .select("id, name, role, planta")
-      .eq("id", user.id)
-      .single();
+    type RowFull = {
+      id: string;
+      name: string;
+      role: string | null;
+      planta: string | null;
+      email: string | null;
+      must_change_password: boolean | null;
+    };
+    type RowLegacy = {
+      id: string;
+      name: string;
+      role: string | null;
+      planta: string | null;
+    };
 
-    if (data) {
+    const { data: full, error: errFull } = await supabase
+      .from("usuarios")
+      .select("id, name, role, planta, email, must_change_password")
+      .eq("id", user.id)
+      .maybeSingle();
+
+    let row: RowFull | null = null;
+
+    if (!errFull && full) {
+      row = full as RowFull;
+    } else if (errFull) {
+      // BD sin columnas nuevas (migración pendiente) u otro error del SELECT amplio.
+      const { data: legacy, error: errLegacy } = await supabase
+        .from("usuarios")
+        .select("id, name, role, planta")
+        .eq("id", user.id)
+        .maybeSingle();
+
+      if (!errLegacy && legacy) {
+        const L = legacy as RowLegacy;
+        row = {
+          id: L.id,
+          name: L.name,
+          role: L.role,
+          planta: L.planta,
+          email: null,
+          must_change_password: false,
+        };
+      }
+    }
+
+    if (row) {
       return {
-        id: data.id,
-        name: data.name,
-        role: (data.role as UserRole) || "capturista",
-        planta: data.planta || "llave2",
+        id: row.id,
+        name: row.name,
+        role: (row.role as UserRole) || "capturista",
+        planta: row.planta || "llave2",
+        email: row.email ?? user.email ?? null,
+        mustChangePassword: row.must_change_password === true,
       };
     }
 
+    // Sin fila en `usuarios`: sesión Auth válida pero perfil no enlazado (o error de lectura).
     return {
       id: user.id,
       name: user.email?.split("@")[0] || "Usuario",
       role: "capturista" as UserRole,
       planta: "llave2",
+      email: user.email ?? null,
+      mustChangePassword: false,
     };
   }
 );

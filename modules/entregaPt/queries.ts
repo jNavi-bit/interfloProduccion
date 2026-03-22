@@ -56,3 +56,36 @@ export async function getEntregaPtRowsLatest(
 
   return { rows, hasMoreOlder };
 }
+
+const EXPORT_PAGE_SIZE = 1000;
+
+/** Todas las filas persistidas (orden: fecha asc, id asc), para exportación Excel. */
+export async function getAllEntregaPtRowsForExport(
+  planta: PlantaValue
+): Promise<{ ok: true; rows: EntregaPtRowState[] } | { ok: false; error: string }> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const table = PROD_TERMINADO_TABLE[planta];
+  const all: EntregaPtRowState[] = [];
+  let offset = 0;
+  for (;;) {
+    const { data, error } = await supabase
+      .from(table)
+      .select("*")
+      .order("fecha", { ascending: true, nullsFirst: true })
+      .order("id", { ascending: true })
+      .range(offset, offset + EXPORT_PAGE_SIZE - 1);
+
+    if (error) {
+      return { ok: false, error: error.message };
+    }
+    const batch = data ?? [];
+    if (batch.length === 0) break;
+    for (const row of batch) {
+      all.push(toEntregaPtRowState(planta, row as Record<string, unknown>));
+    }
+    if (batch.length < EXPORT_PAGE_SIZE) break;
+    offset += EXPORT_PAGE_SIZE;
+  }
+  return { ok: true, rows: all };
+}

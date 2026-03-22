@@ -17,19 +17,19 @@ export async function HomePage({ user, planta }: HomePageProps) {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="font-display text-2xl font-bold tracking-tight text-white sm:text-3xl">
+        <h1 className="font-display text-2xl font-bold tracking-tight text-strong sm:text-3xl">
           Bienvenido, {user.name}
         </h1>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-mute">
           Resumen de producción · Planta{" "}
-          <span className="font-medium capitalize text-slate-300">
+          <span className="font-medium capitalize text-main">
             {planta === "llave2" ? "llave" : "periférico"}
           </span>
           {stats.lastDate && (
             <>
               {" "}
               · Último día capturado:{" "}
-              <span className="font-medium text-slate-300">
+              <span className="font-medium text-main">
                 {stats.lastDate}
               </span>
             </>
@@ -73,56 +73,41 @@ export async function HomePage({ user, planta }: HomePageProps) {
       </div>
 
       <div>
-        <h2 className="font-display text-lg font-semibold text-white">
+        <h2 className="font-display text-lg font-semibold text-strong">
           Actividad reciente
         </h2>
-        <p className="mt-1 text-sm text-slate-400">
+        <p className="mt-1 text-sm text-mute">
           Últimos registros de producción
         </p>
 
-        <div className="mt-4 overflow-hidden rounded-xl border border-white/[0.06] bg-slate-900/30">
+        <div className="ui-table-wrap mt-4">
           {recentActivity.length === 0 ? (
             <div className="flex items-center justify-center py-12 text-sm text-slate-500">
               No hay registros de producción aún.
             </div>
           ) : (
             <div className="overflow-x-auto">
-              <table className="w-full text-sm">
+              <table className="ui-table">
                 <thead>
-                  <tr className="border-b border-white/[0.06] text-left">
-                    <th className="whitespace-nowrap px-4 py-3 font-medium text-slate-400">
-                      Fecha
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-medium text-slate-400">
-                      Capturista
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-medium text-slate-400">
-                      Producto
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-medium text-slate-400">
-                      Componente
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 font-medium text-slate-400">
-                      Máquina
-                    </th>
-                    <th className="whitespace-nowrap px-4 py-3 text-right font-medium text-slate-400">
-                      Cantidad
-                    </th>
+                  <tr>
+                    <th className="whitespace-nowrap px-4 py-3">Fecha</th>
+                    <th className="whitespace-nowrap px-4 py-3">Capturista</th>
+                    <th className="whitespace-nowrap px-4 py-3">Producto</th>
+                    <th className="whitespace-nowrap px-4 py-3">Componente</th>
+                    <th className="whitespace-nowrap px-4 py-3">Máquina</th>
+                    <th className="whitespace-nowrap px-4 py-3 text-right">Cantidad</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-white/[0.04]">
+                <tbody>
                   {recentActivity.map((record) => (
-                    <tr
-                      key={record.id}
-                      className="transition-colors hover:bg-white/[0.02]"
-                    >
+                    <tr key={record.id}>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-300">
                         {record.fecha || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-300">
                         {record.capturista || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 font-medium text-white">
+                      <td className="whitespace-nowrap px-4 py-3 font-semibold text-sky-100">
                         {record.producto || "—"}
                       </td>
                       <td className="whitespace-nowrap px-4 py-3 text-slate-300">
@@ -131,7 +116,7 @@ export async function HomePage({ user, planta }: HomePageProps) {
                       <td className="whitespace-nowrap px-4 py-3 text-slate-300">
                         {record.maquina || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono text-slate-200">
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-medium tabular-nums text-fuchsia-300">
                         {record.cantidad_producida?.toLocaleString() ?? "—"}
                       </td>
                     </tr>
