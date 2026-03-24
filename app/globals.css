@@ -6,7 +6,7 @@
   --color-nav: #020617;
   --color-card: #0f172a;
   --color-field: #0c1222;
-  --color-hl: #1e1b4b;
+  --color-hl: #1c1917;
   --color-line: #334155;
 
   --color-subtle: #94a3b8;
@@ -18,7 +18,7 @@
   --color-separator: #475569;
 }
 
-/* Scrollbars con tinte azul/violeta */
+/* Scrollbars con tinte azul / toque cálido */
 .dark,
 .dark * {
   scrollbar-color: oklch(48% 0.12 260) oklch(18% 0.04 260);
@@ -50,12 +50,12 @@
     border: 1px solid transparent;
     background:
       linear-gradient(rgb(15 23 42 / 0.92), rgb(2 6 23 / 0.96)) padding-box,
-      linear-gradient(135deg, rgb(56 189 248 / 0.55), rgb(168 85 247 / 0.5), rgb(249 115 22 / 0.45))
+      linear-gradient(135deg, rgb(56 189 248 / 0.55), rgb(249 115 22 / 0.5), rgb(251 191 36 / 0.42))
         border-box;
   }
 }
 
-/* Tablas: fondo oscuro, encabezados en gradiente azul→morado, acentos vivos */
+/* Tablas: fondo oscuro, encabezados azul → acento naranja */
 @layer components {
   .ui-table-wrap {
     overflow-x: auto;
@@ -65,10 +65,10 @@
       165deg,
       rgb(26 44 78 / 0.96) 0%,
       rgb(18 36 64 / 0.97) 55%,
-      rgb(42 38 95 / 0.38) 100%
+      rgb(67 20 7 / 0.32) 100%
     );
     box-shadow:
-      0 0 0 1px rgb(168 85 247 / 0.12) inset,
+      0 0 0 1px rgb(249 115 22 / 0.14) inset,
       0 12px 40px -12px rgb(0 0 0 / 0.65),
       0 0 48px -20px rgb(56 189 248 / 0.2);
   }
@@ -87,8 +87,8 @@
     background: linear-gradient(
       90deg,
       rgb(30 58 138 / 0.55) 0%,
-      rgb(88 28 135 / 0.45) 50%,
-      rgb(154 52 18 / 0.25) 100%
+      rgb(30 41 59 / 0.65) 48%,
+      rgb(194 65 12 / 0.38) 100%
     );
   }
 

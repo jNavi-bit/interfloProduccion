@@ -4,7 +4,13 @@ import { useMemo } from "react";
 import { Button, Card, CardBody, DatePicker, Select, SelectItem } from "@heroui/react";
 import { parseDate, type DateValue } from "@internationalized/date";
 import { FileSpreadsheet } from "lucide-react";
-import { vividDatePickerClassNames, vividPopoverContentClass, vividSelectClassNames } from "@/lib/heroUiVivid";
+import {
+  vividDatePickerClassNames,
+  vividPopoverContentClass,
+  vividSelectClassNames,
+  vividSelectListboxProps,
+  vividSelectScrollShadowProps,
+} from "@/lib/heroUiVivid";
 
 export type ReportPeriodMode = "day" | "month" | "range";
 
@@ -83,6 +89,9 @@ export function ReportQueryToolbar({
             disallowEmptySelection
             selectedKeys={new Set([mode])}
             classNames={vividSelectClassNames}
+            listboxProps={vividSelectListboxProps}
+            scrollShadowProps={vividSelectScrollShadowProps}
+            popoverProps={{ placement: "bottom-start", offset: 8 }}
             onSelectionChange={(keys) => {
               const k = Array.from(keys)[0] as ReportPeriodMode | undefined;
               if (k) onModeChange(k);
@@ -124,11 +133,13 @@ export function ReportQueryToolbar({
               disallowEmptySelection
               selectedKeys={new Set([monthYm])}
               classNames={vividSelectClassNames}
+              listboxProps={vividSelectListboxProps}
+              scrollShadowProps={vividSelectScrollShadowProps}
+              popoverProps={{ placement: "bottom-start", offset: 8 }}
               onSelectionChange={(keys) => {
                 const k = Array.from(keys)[0] as string | undefined;
                 if (k) onMonthYmChange(k);
               }}
-              listboxProps={{ className: "max-h-72 border border-fuchsia-500/30 bg-slate-950 shadow-xl" }}
             >
               {monthOpts.map((o) => (
                 <SelectItem key={o.key} textValue={o.label}>

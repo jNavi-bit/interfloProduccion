@@ -50,7 +50,7 @@ type ReglaRow = {
   producto_valor: string | null;
 };
 
-type ProdRow = {
+export type ProdRow = {
   maquina: string | null;
   no_maquina: string | number | null;
   proyecto: string | null;
@@ -173,83 +173,17 @@ function compareNoMaquina(a: string, b: string): number {
   return a.localeCompare(b, "es", { numeric: true, sensitivity: "base" });
 }
 
-export async function getProductividadReport(
+/** Agrega productividad a partir de filas ya cargadas (misma lógica que el reporte por periodo). */
+function aggregateProductividadMaquinas(
   planta: PlantaValue,
-  mode: ProductividadReportMode,
-  day?: string,
-  monthYm?: string,
-  rangeStart?: string,
-  rangeEnd?: string
-): Promise<
-  | {
-      ok: true;
-      mode: ProductividadReportMode;
-      maquinas: ProductividadMaquinaGroup[];
-      rowCount: number;
-      omittedCount: number;
-      unmatchedCount: number;
-    }
-  | { ok: false; error: string }
-> {
-  const cookieStore = await cookies();
-  const supabase = createClient(cookieStore);
-  const table = PRODUCCION_TABLE[planta];
-
-  const { data: reglasRaw, error: reglasErr } = await supabase
-    .from("productividad_maquina_regla")
-    .select(
-      "id, planta, prioridad, omitir_en_reporte, etiqueta, maquina_patron, maquina_modo, no_maquina_modo, no_maquina_valores, capacidad_diaria, metrica_numerador, multiplicador_numerador, producto_modo, producto_valor"
-    )
-    .eq("activo", true)
-    .order("prioridad", { ascending: false });
-
-  if (reglasErr) {
-    return { ok: false, error: reglasErr.message };
-  }
-
-  const reglas = (reglasRaw ?? []) as ReglaRow[];
-
-  let q = supabase
-    .from(table)
-    .select(
-      "maquina, no_maquina, proyecto, producto, longitud, cantidad_producida, metros, fecha"
-    )
-    .order("maquina", { ascending: true })
-    .order("no_maquina", { ascending: true });
-
-  if (mode === "day") {
-    const d = (day ?? "").trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
-      return { ok: false, error: "Selecciona un día válido (YYYY-MM-DD)." };
-    }
-    q = q.eq("fecha", d);
-  } else if (mode === "month") {
-    const ym = (monthYm ?? "").trim();
-    if (!/^\d{4}-\d{2}$/.test(ym)) {
-      return { ok: false, error: "Selecciona un mes válido (YYYY-MM)." };
-    }
-    const start = `${ym}-01`;
-    const end = lastDayOfMonthYm(ym);
-    q = q.gte("fecha", start).lte("fecha", end);
-  } else {
-    const a = (rangeStart ?? "").trim();
-    const b = (rangeEnd ?? "").trim();
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
-      return { ok: false, error: "Indica fecha inicio y fin válidas." };
-    }
-    if (a > b) {
-      return { ok: false, error: "La fecha inicial no puede ser posterior a la final." };
-    }
-    q = q.gte("fecha", a).lte("fecha", b);
-  }
-
-  const { data: prodRaw, error: prodErr } = await q;
-
-  if (prodErr) {
-    return { ok: false, error: prodErr.message };
-  }
-
-  const prodRows = (prodRaw ?? []) as ProdRow[];
+  reglas: ReglaRow[],
+  prodRows: ProdRow[]
+): {
+  maquinas: ProductividadMaquinaGroup[];
+  rowCount: number;
+  omittedCount: number;
+  unmatchedCount: number;
+} {
   let omittedCount = 0;
   let unmatchedCount = 0;
 
@@ -363,10 +297,134 @@ export async function getProductividadReport(
     }));
 
   return {
+    maquinas,
+    rowCount: prodRows.length,
+    omittedCount,
+    unmatchedCount,
+  };
+}
+
+export async function buildProductividadFromProdRows(
+  planta: PlantaValue,
+  prodRows: ProdRow[]
+): Promise<
+  | {
+      ok: true;
+      maquinas: ProductividadMaquinaGroup[];
+      rowCount: number;
+      omittedCount: number;
+      unmatchedCount: number;
+    }
+  | { ok: false; error: string }
+> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: reglasRaw, error: reglasErr } = await supabase
+    .from("productividad_maquina_regla")
+    .select(
+      "id, planta, prioridad, omitir_en_reporte, etiqueta, maquina_patron, maquina_modo, no_maquina_modo, no_maquina_valores, capacidad_diaria, metrica_numerador, multiplicador_numerador, producto_modo, producto_valor"
+    )
+    .eq("activo", true)
+    .order("prioridad", { ascending: false });
+
+  if (reglasErr) {
+    return { ok: false, error: reglasErr.message };
+  }
+
+  const reglas = (reglasRaw ?? []) as ReglaRow[];
+  const agg = aggregateProductividadMaquinas(planta, reglas, prodRows);
+  return { ok: true, ...agg };
+}
+
+export async function getProductividadReport(
+  planta: PlantaValue,
+  mode: ProductividadReportMode,
+  day?: string,
+  monthYm?: string,
+  rangeStart?: string,
+  rangeEnd?: string
+): Promise<
+  | {
+      ok: true;
+      mode: ProductividadReportMode;
+      maquinas: ProductividadMaquinaGroup[];
+      rowCount: number;
+      omittedCount: number;
+      unmatchedCount: number;
+    }
+  | { ok: false; error: string }
+> {
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+  const table = PRODUCCION_TABLE[planta];
+
+  const { data: reglasRaw, error: reglasErr } = await supabase
+    .from("productividad_maquina_regla")
+    .select(
+      "id, planta, prioridad, omitir_en_reporte, etiqueta, maquina_patron, maquina_modo, no_maquina_modo, no_maquina_valores, capacidad_diaria, metrica_numerador, multiplicador_numerador, producto_modo, producto_valor"
+    )
+    .eq("activo", true)
+    .order("prioridad", { ascending: false });
+
+  if (reglasErr) {
+    return { ok: false, error: reglasErr.message };
+  }
+
+  const reglas = (reglasRaw ?? []) as ReglaRow[];
+
+  let q = supabase
+    .from(table)
+    .select(
+      "maquina, no_maquina, proyecto, producto, longitud, cantidad_producida, metros, fecha"
+    )
+    .order("maquina", { ascending: true })
+    .order("no_maquina", { ascending: true });
+
+  if (mode === "day") {
+    const d = (day ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(d)) {
+      return { ok: false, error: "Selecciona un día válido (YYYY-MM-DD)." };
+    }
+    q = q.eq("fecha", d);
+  } else if (mode === "month") {
+    const ym = (monthYm ?? "").trim();
+    if (!/^\d{4}-\d{2}$/.test(ym)) {
+      return { ok: false, error: "Selecciona un mes válido (YYYY-MM)." };
+    }
+    const start = `${ym}-01`;
+    const end = lastDayOfMonthYm(ym);
+    q = q.gte("fecha", start).lte("fecha", end);
+  } else {
+    const a = (rangeStart ?? "").trim();
+    const b = (rangeEnd ?? "").trim();
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(a) || !/^\d{4}-\d{2}-\d{2}$/.test(b)) {
+      return { ok: false, error: "Indica fecha inicio y fin válidas." };
+    }
+    if (a > b) {
+      return { ok: false, error: "La fecha inicial no puede ser posterior a la final." };
+    }
+    q = q.gte("fecha", a).lte("fecha", b);
+  }
+
+  const { data: prodRaw, error: prodErr } = await q;
+
+  if (prodErr) {
+    return { ok: false, error: prodErr.message };
+  }
+
+  const prodRows = (prodRaw ?? []) as ProdRow[];
+  const { maquinas, rowCount, omittedCount, unmatchedCount } = aggregateProductividadMaquinas(
+    planta,
+    reglas,
+    prodRows
+  );
+
+  return {
     ok: true,
     mode,
     maquinas,
-    rowCount: prodRows.length,
+    rowCount,
     omittedCount,
     unmatchedCount,
   };

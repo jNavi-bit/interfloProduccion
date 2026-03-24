@@ -244,7 +244,7 @@ export function MetrosTotalesReport({ planta }: MetrosTotalesReportProps) {
                   <Fragment key={mg.maquina}>
                     {mg.noMaquinaGroups.map((ng) => (
                       <Fragment key={`${mg.maquina}-${ng.noMaquinaLabel}`}>
-                        <tr className="border-b border-sky-500/40 bg-gradient-to-r from-sky-600/25 via-blue-900/30 to-violet-800/25">
+                        <tr className="border-b border-sky-500/40 bg-gradient-to-r from-sky-600/25 via-blue-900/30 to-orange-900/25">
                           <td
                             colSpan={6}
                             className="px-3 py-2 text-xs font-semibold tracking-wide text-sky-100 uppercase"
@@ -331,7 +331,7 @@ export function MetrosTotalesReport({ planta }: MetrosTotalesReportProps) {
                   <tr key={`${r.maquina}-${r.noMaquinaLabel}-${i}`}>
                     <td className="px-3 py-2 text-slate-200">{r.maquina}</td>
                     <td className="px-3 py-2 text-slate-300">{r.noMaquinaLabel}</td>
-                    <td className="px-3 py-2 text-right font-mono font-medium tabular-nums text-fuchsia-300">
+                    <td className="px-3 py-2 text-right font-mono font-medium tabular-nums text-sky-300">
                       {fmtMetros(r.totalMetros)}
                     </td>
                   </tr>

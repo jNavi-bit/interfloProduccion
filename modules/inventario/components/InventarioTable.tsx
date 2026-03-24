@@ -21,9 +21,9 @@ const columns: { key: keyof CatalogoProducto; label: string; align?: "right" }[]
 export function InventarioTable({ productos, hasFilters }: InventarioTableProps) {
   if (productos.length === 0) {
     return (
-      <div className="gradient-ring-surface flex flex-col items-center justify-center rounded-2xl py-16 shadow-xl shadow-violet-950/30">
-        <div className="rounded-2xl bg-gradient-to-br from-violet-600/30 to-orange-500/20 p-4 ring-2 ring-fuchsia-500/25">
-          <Package className="h-10 w-10 text-fuchsia-300" strokeWidth={1.5} />
+      <div className="gradient-ring-surface flex flex-col items-center justify-center rounded-2xl py-16 shadow-xl shadow-orange-950/30">
+        <div className="rounded-2xl bg-gradient-to-br from-orange-600/30 to-amber-500/20 p-4 ring-2 ring-orange-500/25">
+          <Package className="h-10 w-10 text-orange-300" strokeWidth={1.5} />
         </div>
         <p className="mt-4 text-sm text-slate-400">
           {hasFilters

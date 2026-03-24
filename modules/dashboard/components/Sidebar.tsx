@@ -134,7 +134,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
                     transition-colors duration-150
                     ${
                       isActive
-                        ? "bg-gradient-to-r from-sky-500/20 to-violet-500/15 text-white ring-1 ring-sky-400/30"
+                        ? "bg-gradient-to-r from-sky-500/20 to-orange-500/15 text-white ring-1 ring-sky-400/30"
                         : "text-mute hover:bg-hl hover:text-white"
                     }
                   `}
@@ -158,7 +158,7 @@ export function Sidebar({ user, open, onClose }: SidebarProps) {
 
         <div className="shrink-0 border-t border-line p-4">
           <div className="flex items-center gap-2">
-            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-violet-500/25 to-sky-500/20 text-sm font-bold text-violet-100 ring-1 ring-violet-400/25">
+            <div className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gradient-to-br from-orange-500/30 to-sky-500/20 text-sm font-bold text-orange-100 ring-1 ring-orange-400/30">
               {user.name.charAt(0).toUpperCase()}
             </div>
             <div className="min-w-0 flex-1">

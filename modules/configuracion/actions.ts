@@ -5,6 +5,11 @@ import { createClient } from "@/database/utils/supabase/server";
 import { getUserProfile } from "@/modules/dashboard/queries";
 import { PRODUCCION_TABLE } from "@/modules/captura/plantConfig";
 import { PROD_TERMINADO_TABLE } from "@/modules/entregaPt/plantConfig";
+import {
+  coerceListaNumeros,
+  etiquetaParaUnNumero,
+  validateListaUnSoloNumeroMaquina,
+} from "@/modules/configuracion/productividadReglaUtils";
 
 export type ProductividadReglaConfigRow = {
   id: string;
@@ -103,12 +108,16 @@ export async function updateProductividadRegla(
   if (input.no_maquina_modo === "lista") {
     const t = input.no_maquina_valores_json.trim();
     if (!t) {
-      return { ok: false, error: "Con modo «lista», indica valores JSON (ej. [1,2,5])." };
+      return { ok: false, error: "Con modo «lista», indica un arreglo con un solo valor (ej. [1])." };
     }
     try {
       noMaquinaValores = JSON.parse(t) as unknown;
       if (!Array.isArray(noMaquinaValores)) {
         return { ok: false, error: "no_maquina_valores debe ser un arreglo JSON." };
+      }
+      const errLista = validateListaUnSoloNumeroMaquina(noMaquinaValores);
+      if (errLista) {
+        return { ok: false, error: errLista };
       }
     } catch {
       return { ok: false, error: "JSON inválido en números de máquina." };
@@ -169,6 +178,96 @@ export async function updateProductividadRegla(
   }
 
   return { ok: true };
+}
+
+type ProductividadReglaDbRow = Record<string, unknown>;
+
+function payloadInsertFromRow(
+  row: ProductividadReglaDbRow,
+  overrides: { etiqueta: string; no_maquina_valores: unknown[] }
+) {
+  return {
+    planta: row.planta ?? null,
+    prioridad: row.prioridad,
+    omitir_en_reporte: row.omitir_en_reporte,
+    etiqueta: overrides.etiqueta,
+    maquina_patron: row.maquina_patron,
+    maquina_modo: row.maquina_modo,
+    no_maquina_modo: row.no_maquina_modo,
+    no_maquina_valores: overrides.no_maquina_valores,
+    capacidad_diaria: row.capacidad_diaria,
+    metrica_numerador: row.metrica_numerador,
+    multiplicador_numerador: row.multiplicador_numerador,
+    producto_modo: row.producto_modo,
+    producto_valor: row.producto_valor ?? null,
+    descripcion_formula: row.descripcion_formula ?? null,
+    activo: row.activo,
+  };
+}
+
+/**
+ * Parte reglas con no_maquina_modo=lista y varios valores en un registro por valor.
+ * Ajusta etiquetas con {@link etiquetaParaUnNumero} (ej. "Fontai" + [1,2] → "Fontai 1", "Fontai 2").
+ */
+export async function splitProductividadReglasListaMultiples(): Promise<
+  | { ok: true; reglasAfectadas: number; filasNuevas: number }
+  | { ok: false; error: string }
+> {
+  const auth = await requireAdmin();
+  if (!auth.ok) return auth;
+
+  const cookieStore = await cookies();
+  const supabase = createClient(cookieStore);
+
+  const { data: rows, error: listErr } = await supabase
+    .from("productividad_maquina_regla")
+    .select("*")
+    .eq("no_maquina_modo", "lista");
+
+  if (listErr) {
+    return { ok: false, error: listErr.message };
+  }
+
+  const listaRows = (rows as ProductividadReglaDbRow[]) ?? [];
+  let reglasAfectadas = 0;
+  let filasNuevas = 0;
+
+  for (const row of listaRows) {
+    const arr = coerceListaNumeros(row.no_maquina_valores);
+    if (!arr || arr.length <= 1) continue;
+
+    reglasAfectadas += 1;
+    const etiquetaOriginal = String(row.etiqueta ?? "");
+    const first = arr[0];
+    const firstLabel = etiquetaParaUnNumero(etiquetaOriginal, first);
+
+    const { error: upErr } = await supabase
+      .from("productividad_maquina_regla")
+      .update({
+        no_maquina_valores: [first],
+        etiqueta: firstLabel,
+      })
+      .eq("id", row.id as string);
+
+    if (upErr) {
+      return { ok: false, error: `Al actualizar regla ${String(row.id)}: ${upErr.message}` };
+    }
+
+    for (let i = 1; i < arr.length; i++) {
+      const v = arr[i];
+      const payload = payloadInsertFromRow(row, {
+        etiqueta: etiquetaParaUnNumero(etiquetaOriginal, v),
+        no_maquina_valores: [v],
+      });
+      const { error: insErr } = await supabase.from("productividad_maquina_regla").insert(payload);
+      if (insErr) {
+        return { ok: false, error: `Al duplicar regla (${etiquetaOriginal}, no. ${String(v)}): ${insErr.message}` };
+      }
+      filasNuevas += 1;
+    }
+  }
+
+  return { ok: true, reglasAfectadas, filasNuevas };
 }
 
 function tableMapFromTargets(t: PurgeTargets): { key: keyof PurgeTargets; table: string }[] {

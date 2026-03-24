@@ -1,6 +1,7 @@
-import { TrendingDown, Layers, Factory, Zap } from "lucide-react";
+import { Trash2, Layers, Factory, Zap } from "lucide-react";
+import { PLANTA_OPTIONS } from "@/modules/dashboard/plants";
 import { StatCard } from "./StatCard";
-import { getDashboardStats, getRecentActivity } from "../queries";
+import { getDashboardHomeData } from "../queries";
 import type { UserProfile } from "../types";
 
 interface HomePageProps {
@@ -8,11 +9,24 @@ interface HomePageProps {
   planta: string;
 }
 
+function formatLastCapturedLabel(iso: string): string {
+  const parts = iso.split("-").map((p) => parseInt(p, 10));
+  if (parts.length !== 3 || parts.some((n) => !Number.isFinite(n))) return iso;
+  const [y, m, d] = parts;
+  return new Date(Date.UTC(y, m - 1, d)).toLocaleDateString("es-MX", {
+    weekday: "long",
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    timeZone: "UTC",
+  });
+}
+
 export async function HomePage({ user, planta }: HomePageProps) {
-  const [stats, recentActivity] = await Promise.all([
-    getDashboardStats(planta),
-    getRecentActivity(planta),
-  ]);
+  const { stats, recentActivity } = await getDashboardHomeData(planta);
+  const lastDayLabel = stats.lastDate ? formatLastCapturedLabel(stats.lastDate) : null;
+  const plantaLabel =
+    PLANTA_OPTIONS.find((o) => o.value === planta)?.label ?? planta;
 
   return (
     <div className="space-y-8">
@@ -21,17 +35,17 @@ export async function HomePage({ user, planta }: HomePageProps) {
           Bienvenido, {user.name}
         </h1>
         <p className="mt-1 text-sm text-mute">
-          Resumen de producción · Planta{" "}
-          <span className="font-medium capitalize text-main">
-            {planta === "llave2" ? "llave" : "periférico"}
-          </span>
-          {stats.lastDate && (
+          {lastDayLabel ? (
             <>
-              {" "}
-              · Último día capturado:{" "}
-              <span className="font-medium text-main">
-                {stats.lastDate}
-              </span>
+              Resumen del día{" "}
+              <span className="font-medium text-main">{lastDayLabel}</span>{" "}
+              (última fecha con reportes). Planta{" "}
+              <span className="font-medium text-main">{plantaLabel}</span>.
+            </>
+          ) : (
+            <>
+              Aún no hay fechas con reportes en esta planta.{" "}
+              <span className="font-medium text-main">{plantaLabel}</span>.
             </>
           )}
         </p>
@@ -41,8 +55,7 @@ export async function HomePage({ user, planta }: HomePageProps) {
         <StatCard
           label="Merma total"
           value={stats.totalMerma > 0 ? `${stats.totalMerma} kg` : "Sin datos"}
-          subtitle={stats.lastDate ? `Día ${stats.lastDate}` : undefined}
-          icon={<TrendingDown className="h-5 w-5" strokeWidth={2} />}
+          icon={<Trash2 className="h-5 w-5" strokeWidth={2} />}
           color="amber"
         />
         <StatCard
@@ -52,32 +65,41 @@ export async function HomePage({ user, planta }: HomePageProps) {
               ? stats.totalProducido.toLocaleString()
               : "Sin datos"
           }
-          subtitle={stats.lastDate ? `Día ${stats.lastDate}` : undefined}
           icon={<Layers className="h-5 w-5" strokeWidth={2} />}
           color="emerald"
         />
         <StatCard
           label="Registros capturados"
           value={stats.componentesFabricados}
-          subtitle={stats.lastDate ? `Día ${stats.lastDate}` : undefined}
           icon={<Factory className="h-5 w-5" strokeWidth={2} />}
           color="sky"
         />
         <StatCard
           label="Máquina más eficiente"
           value={stats.maquinaEficiente || "Sin datos"}
-          subtitle="Mayor producción del día"
           icon={<Zap className="h-5 w-5" strokeWidth={2} />}
-          color="violet"
+          color="orange"
         />
       </div>
 
       <div>
         <h2 className="font-display text-lg font-semibold text-strong">
-          Actividad reciente
+          {lastDayLabel ? (
+            <>
+              Registros del día{" "}
+              <span className="text-main">{lastDayLabel}</span>{" "}
+              <span className="text-mute font-normal">
+                (última fecha con reportes)
+              </span>
+            </>
+          ) : (
+            "Registros del día"
+          )}
         </h2>
         <p className="mt-1 text-sm text-mute">
-          Últimos registros de producción
+          {lastDayLabel
+            ? "Todas las filas de ese día, del registro más reciente al más antiguo (por id)."
+            : "Cuando existan reportes con fecha, aquí verás todas las filas de ese día."}
         </p>
 
         <div className="ui-table-wrap mt-4">
@@ -86,7 +108,7 @@ export async function HomePage({ user, planta }: HomePageProps) {
               No hay registros de producción aún.
             </div>
           ) : (
-            <div className="overflow-x-auto">
+            <div className="max-h-[min(70vh,48rem)] overflow-auto">
               <table className="ui-table">
                 <thead>
                   <tr>
@@ -116,7 +138,7 @@ export async function HomePage({ user, planta }: HomePageProps) {
                       <td className="whitespace-nowrap px-4 py-3 text-slate-300">
                         {record.maquina || "—"}
                       </td>
-                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-medium tabular-nums text-fuchsia-300">
+                      <td className="whitespace-nowrap px-4 py-3 text-right font-mono font-medium tabular-nums text-sky-300">
                         {record.cantidad_producida?.toLocaleString() ?? "—"}
                       </td>
                     </tr>

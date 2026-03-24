@@ -302,11 +302,11 @@ export function ProductividadReport({ planta }: ProductividadReportProps) {
                           {li === 0 ? (
                             <td
                               rowSpan={blockSpan}
-                              className="align-top border-r border-violet-500/25 px-2 py-2 font-mono text-xs text-violet-200/90"
+                              className="align-top border-r border-orange-500/25 px-2 py-2 font-mono text-xs text-orange-200/90"
                             >
                               <div>{block.noMaquinaLabel}</div>
                               {showReglaSubtitle && (
-                                <div className="mt-1 text-[10px] font-normal leading-tight text-fuchsia-300/90">
+                                <div className="mt-1 text-[10px] font-normal leading-tight text-orange-300/90">
                                   {block.reglaEtiqueta}
                                 </div>
                               )}
@@ -349,17 +349,17 @@ export function ProductividadReport({ planta }: ProductividadReportProps) {
 
                 return (
                   <Fragment key={mg.maquina}>
-                    <tr className="border-b border-fuchsia-500/35 bg-gradient-to-r from-violet-900/55 via-blue-950/50 to-slate-950/80">
+                    <tr className="border-b border-orange-500/35 bg-gradient-to-r from-orange-950/55 via-blue-950/50 to-slate-950/80">
                       <td colSpan={8} className="px-2 py-2">
                         <button
                           type="button"
                           onClick={() => toggleMaquina(mg.maquina)}
-                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-semibold text-fuchsia-100 transition hover:bg-white/5"
+                          className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left font-semibold text-orange-100 transition hover:bg-white/5"
                         >
                           {expanded ? (
-                            <ChevronDown className="h-4 w-4 shrink-0 text-fuchsia-400" />
+                            <ChevronDown className="h-4 w-4 shrink-0 text-orange-400" />
                           ) : (
-                            <ChevronRight className="h-4 w-4 shrink-0 text-fuchsia-400" />
+                            <ChevronRight className="h-4 w-4 shrink-0 text-orange-400" />
                           )}
                           <span className="tracking-tight">{mg.maquina}</span>
                           <span className="text-xs font-normal text-slate-400">

@@ -17,6 +17,7 @@ import {
   LogIn,
   ShieldCheck,
   FileText,
+  BookOpen,
 } from "lucide-react";
 
 const navLinks = [
@@ -273,6 +274,13 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
             >
               <FileText className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
               Términos de Servicio
+            </Link>
+            <Link
+              href="/manual/requisitos-tecnicos"
+              className="flex items-center gap-2 text-xs text-slate-500 transition hover:text-white sm:text-sm"
+            >
+              <BookOpen className="h-3.5 w-3.5 shrink-0 sm:h-4 sm:w-4" />
+              Manual de requisitos técnicos
             </Link>
           </div>
         </div>

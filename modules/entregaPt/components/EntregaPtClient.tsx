@@ -1714,7 +1714,7 @@ export function EntregaPtClient({
             className="min-w-max border-collapse text-sm select-none"
             style={{ tableLayout: "fixed" }}
           >
-            <thead className="sticky top-0 z-20 border-b border-sky-500/30 bg-gradient-to-r from-blue-950/95 via-slate-950/98 to-violet-950/90 shadow-md backdrop-blur-sm">
+            <thead className="sticky top-0 z-20 border-b border-sky-500/30 bg-gradient-to-r from-blue-950/95 via-slate-950/98 to-orange-950/90 shadow-md backdrop-blur-sm">
               <tr>
                 <th
                   aria-hidden
@@ -1741,7 +1741,7 @@ export function EntregaPtClient({
                         </span>
                         <button
                           type="button"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sky-300/80 transition hover:bg-fuchsia-600/25 hover:text-fuchsia-100"
+                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sky-300/80 transition hover:bg-orange-600/25 hover:text-orange-100"
                           aria-label={`Filtro ${col.label}`}
                           onClick={(ev) => {
                             ev.stopPropagation();
@@ -2048,7 +2048,7 @@ function ColumnFilterPanel({
     <div
       ref={ref}
       data-grid-filter-panel
-      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-fuchsia-500/35 bg-slate-950/95 p-2 shadow-2xl shadow-violet-900/40 backdrop-blur-md"
+      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-orange-500/35 bg-slate-950/95 p-2 shadow-2xl shadow-orange-950/40 backdrop-blur-md"
       onMouseDown={(e) => e.stopPropagation()}
       onKeyDown={(e) => e.stopPropagation()}
     >
@@ -2071,11 +2071,11 @@ function ColumnFilterPanel({
           onKeyDown={(e) => e.stopPropagation()}
           placeholder="Buscar valores…"
           enterKeyHint="done"
-          className="mb-2 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-fuchsia-500/30"
+          className="mb-2 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-orange-500/30"
           autoComplete="off"
           aria-label={`Buscar en filtro ${label}`}
         />
-        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-violet-500/30 bg-violet-950/40 px-2 py-1.5 text-xs text-violet-100 hover:bg-violet-900/50">
+        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-950/40 px-2 py-1.5 text-xs text-orange-100 hover:bg-orange-900/50">
           <input
             type="checkbox"
             checked={allDeselected}
@@ -2122,7 +2122,7 @@ function ColumnFilterPanel({
           </button>
           <button
             type="submit"
-            className="flex-1 rounded-lg bg-gradient-to-r from-sky-500 via-cyan-500 to-violet-600 py-1.5 text-xs font-semibold text-slate-950 shadow-md shadow-cyan-500/20 hover:brightness-110"
+            className="flex-1 rounded-lg bg-gradient-to-r from-sky-500 via-cyan-500 to-orange-600 py-1.5 text-xs font-semibold text-slate-950 shadow-md shadow-cyan-500/20 hover:brightness-110"
           >
             Aplicar
           </button>

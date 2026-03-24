@@ -15,7 +15,12 @@ import {
   SelectItem,
 } from "@heroui/react";
 import { Search, Upload, X, AlertTriangle, CheckCircle2 } from "lucide-react";
-import { vividFieldClassNames, vividSelectClassNames } from "@/lib/heroUiVivid";
+import {
+  vividFieldClassNames,
+  vividSelectClassNames,
+  vividSelectListboxProps,
+  vividSelectScrollShadowProps,
+} from "@/lib/heroUiVivid";
 import { replaceCatalogo, type ReplaceResult } from "../actions";
 
 interface InventarioToolbarProps {
@@ -105,6 +110,8 @@ export function InventarioToolbar({
         radius="lg"
         color="secondary"
         classNames={vividSelectClassNames}
+        listboxProps={vividSelectListboxProps}
+        scrollShadowProps={vividSelectScrollShadowProps}
         disallowEmptySelection
         items={clienteItems}
         selectedKeys={new Set([currentCliente || ALL_KEY])}
@@ -113,7 +120,6 @@ export function InventarioToolbar({
           if (k === undefined) return;
           updateParams("cliente", k === ALL_KEY ? "" : k);
         }}
-        listboxProps={{ className: "max-h-72 border border-fuchsia-500/30 bg-slate-950" }}
         popoverProps={{ placement: "bottom-start", offset: 10 }}
       >
         {(item) => (

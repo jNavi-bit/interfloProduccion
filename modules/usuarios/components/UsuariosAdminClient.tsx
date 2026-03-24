@@ -19,7 +19,12 @@ import Link from "next/link";
 import { ArrowLeft, Plus, Trash2, Users } from "lucide-react";
 import { PLANTA_OPTIONS, type PlantaValue } from "@/modules/dashboard/plants";
 import type { UserRole } from "@/modules/dashboard/types";
-import { vividFieldClassNames, vividSelectClassNames } from "@/lib/heroUiVivid";
+import {
+  vividFieldClassNames,
+  vividSelectClassNames,
+  vividSelectListboxProps,
+  vividSelectScrollShadowProps,
+} from "@/lib/heroUiVivid";
 import {
   listUsuariosAdmin,
   updateUsuarioAdmin,
@@ -248,6 +253,9 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
               size="sm"
               color="primary"
               classNames={vividSelectClassNames}
+              listboxProps={vividSelectListboxProps}
+              scrollShadowProps={vividSelectScrollShadowProps}
+              popoverProps={{ placement: "bottom-start", offset: 8 }}
               disallowEmptySelection
               selectedKeys={new Set([newRole])}
               onSelectionChange={(keys) => {
@@ -270,6 +278,9 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
               size="sm"
               color="secondary"
               classNames={vividSelectClassNames}
+              listboxProps={vividSelectListboxProps}
+              scrollShadowProps={vividSelectScrollShadowProps}
+              popoverProps={{ placement: "bottom-start", offset: 8 }}
               disallowEmptySelection
               selectedKeys={new Set([newPlanta])}
               onSelectionChange={(keys) => {
@@ -288,7 +299,7 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
             <Button
               color="primary"
               radius="lg"
-              className="bg-gradient-to-r from-sky-500 to-violet-600 font-semibold text-white shadow-lg shadow-sky-500/25"
+              className="bg-gradient-to-r from-sky-500 to-orange-600 font-semibold text-white shadow-lg shadow-sky-500/25"
               isDisabled={pending}
               onPress={() => void createUser()}
             >
@@ -332,7 +343,7 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
                     <p className="font-medium text-sky-100">{r.email || "—"}</p>
                     <p className="mt-0.5 font-mono text-[10px] text-slate-500">{r.id.slice(0, 8)}…</p>
                     {isSelf && (
-                      <span className="mt-1 inline-block text-[10px] font-medium text-violet-600">Tú</span>
+                      <span className="mt-1 inline-block text-[10px] font-medium text-orange-600">Tú</span>
                     )}
                   </td>
                   <td className="max-w-[220px] px-4 py-3 align-top">
@@ -358,6 +369,9 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
                       color="primary"
                       className="w-full min-w-0"
                       classNames={vividSelectClassNames}
+                      listboxProps={vividSelectListboxProps}
+                      scrollShadowProps={vividSelectScrollShadowProps}
+                      popoverProps={{ placement: "bottom-start", offset: 8 }}
                       disallowEmptySelection
                       selectedKeys={new Set([d.role])}
                       onSelectionChange={(keys) => {
@@ -383,6 +397,9 @@ export function UsuariosAdminClient({ initialRows, currentUserId }: UsuariosAdmi
                       color="secondary"
                       className="w-full min-w-0"
                       classNames={vividSelectClassNames}
+                      listboxProps={vividSelectListboxProps}
+                      scrollShadowProps={vividSelectScrollShadowProps}
+                      popoverProps={{ placement: "bottom-start", offset: 8 }}
                       disallowEmptySelection
                       selectedKeys={new Set([d.planta])}
                       onSelectionChange={(keys) => {

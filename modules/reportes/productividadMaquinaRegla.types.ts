@@ -7,6 +7,8 @@
  * (grupo = mismo día + misma maquina + mismo no_maquina; soldadura puede partir por producto).
  *
  * Si `omitir_en_reporte` es true, las filas de producción que casen con esa regla no entran al reporte.
+ *
+ * Con `no_maquina_modo` = `lista`, `no_maquina_valores` debe ser un arreglo de un solo elemento (un registro = una máquina).
  */
 
 export type PlantaRegla = "llave2" | "periferico" | "perisur";

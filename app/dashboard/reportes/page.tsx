@@ -2,12 +2,13 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { getUserProfile } from "@/modules/dashboard";
 import { resolvePlantaForUser } from "@/modules/dashboard/plants";
+import { InstantLastDayReportButton } from "@/modules/reportes/components/InstantLastDayReportButton";
 import { Scale, Ruler, Gauge } from "lucide-react";
 
 const iconColors = {
   Scale: "text-orange-500",
   Ruler: "text-sky-500",
-  Gauge: "text-violet-500",
+  Gauge: "text-orange-500",
 } as const;
 
 export default async function ReportesPage({
@@ -58,6 +59,18 @@ export default async function ReportesPage({
         </p>
       </div>
 
+      <div className="flex flex-col gap-3 rounded-2xl border border-sky-500/25 bg-slate-950/60 p-4 sm:flex-row sm:items-center sm:justify-between">
+        <div>
+          <p className="text-sm font-medium text-sky-100">Vista rápida</p>
+          <p className="mt-0.5 text-xs text-slate-500">
+            Kilos, metros y productividad por máquina para la{" "}
+            <span className="text-slate-400">última fecha con reportes</span>{" "}
+            (mismo criterio que el inicio del dashboard).
+          </p>
+        </div>
+        <InstantLastDayReportButton planta={planta} />
+      </div>
+
       <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {cards.map((c) => {
           const Icon = c.icon;
@@ -75,7 +88,7 @@ export default async function ReportesPage({
                 <h2 className="text-lg font-semibold text-white">{c.title}</h2>
                 <p className="mt-2 flex-1 text-sm text-slate-400">{c.description}</p>
                 {c.available && (
-                  <span className="mt-4 inline-block bg-gradient-to-r from-sky-400 to-violet-400 bg-clip-text text-sm font-bold text-transparent">
+                  <span className="mt-4 inline-block bg-gradient-to-r from-sky-400 to-amber-400 bg-clip-text text-sm font-bold text-transparent">
                     Abrir →
                   </span>
                 )}

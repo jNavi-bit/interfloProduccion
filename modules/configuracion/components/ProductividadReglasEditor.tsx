@@ -5,6 +5,7 @@ import { Alert, Button, Checkbox, Input, NumberInput, Select, SelectItem } from 
 import { Settings2 } from "lucide-react";
 import {
   listProductividadReglasConfig,
+  splitProductividadReglasListaMultiples,
   updateProductividadRegla,
   type ProductividadReglaConfigRow,
   type UpdateProductividadReglaInput,
@@ -85,6 +86,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
   const [forms, setForms] = useState<Record<string, UpdateProductividadReglaInput>>({});
   const [loadError, setLoadError] = useState<string | null>(null);
   const [saveMsg, setSaveMsg] = useState<Record<string, string | null>>({});
+  const [splitMsg, setSplitMsg] = useState<string | null>(null);
   const [pending, startTransition] = useTransition();
 
   const load = useCallback(() => {
@@ -147,6 +149,18 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
         </div>
       </div>
 
+      <div className="mb-5 rounded-xl border border-amber-500/25 bg-amber-500/5 px-4 py-3 text-sm text-mute">
+        <p className="font-medium text-amber-200">Un número de máquina por registro</p>
+        <p className="mt-2 text-xs leading-relaxed text-mute">
+          Si usas <span className="text-main">No. máquina → Lista JSON</span>, escribe{" "}
+          <span className="font-mono text-main">[1]</span> o <span className="font-mono text-main">[&quot;2&quot;]</span>, no{" "}
+          <span className="font-mono text-subtle">[1,2]</span>. Para dos máquinas (ej. Fontai 1 y Fontai 2), crea{" "}
+          <span className="text-main">dos filas</span> con el mismo patrón de máquina y capacidad, cada una con su número.
+          Si ya tienes datos viejos con <span className="font-mono text-subtle">[1,2,...]</span>, usa el botón de abajo
+          para partirlas automáticamente.
+        </p>
+      </div>
+
       <div className="mb-5 rounded-xl border border-sky-500/25 bg-sky-500/5 px-4 py-3 text-sm text-mute">
         <p className="font-medium text-sky-300">Campo «Prioridad»</p>
         <p className="mt-2 text-xs leading-relaxed text-mute">
@@ -183,6 +197,55 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
           className="mb-4"
           description={loadError}
         />
+      )}
+
+      {isAdmin && (
+        <div className="mb-5 flex flex-wrap items-center gap-3">
+          <Button
+            color="warning"
+            variant="flat"
+            radius="lg"
+            size="sm"
+            className="font-semibold"
+            isDisabled={pending}
+            onPress={() => {
+              if (
+                !window.confirm(
+                  "Se buscarán reglas con «Lista JSON» y varios números (ej. [1,2]). Cada una se convertirá en varias filas (una por número) y se ajustarán las etiquetas. ¿Continuar?"
+                )
+              ) {
+                return;
+              }
+              setSplitMsg(null);
+              startTransition(async () => {
+                const res = await splitProductividadReglasListaMultiples();
+                if (!res.ok) {
+                  setSplitMsg(res.error);
+                  return;
+                }
+                setSplitMsg(
+                  res.reglasAfectadas === 0
+                    ? "No había reglas con lista de varios números."
+                    : `Listo: ${res.reglasAfectadas} regla(s) partida(s), ${res.filasNuevas} fila(s) nuevas.`
+                );
+                load();
+              });
+            }}
+          >
+            Normalizar listas con varios números
+          </Button>
+          {splitMsg && (
+            <span
+              className={
+                splitMsg.startsWith("No había") || splitMsg.startsWith("Listo:")
+                  ? "text-sm text-emerald-400"
+                  : "text-sm text-rose-300"
+              }
+            >
+              {splitMsg}
+            </span>
+          )}
+        </div>
       )}
 
       <div className="space-y-5">
@@ -307,7 +370,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 {f.no_maquina_modo === "lista" && (
                   <div className="sm:col-span-2 lg:col-span-3">
                     <label className="mb-1 block text-xs text-default-500">
-                      Lista JSON (ej. [1,2,5])
+                      Un solo valor JSON (ej. [1] o [&quot;3&quot;])
                     </label>
                     <textarea
                       value={f.no_maquina_valores_json}
