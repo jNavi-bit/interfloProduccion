@@ -18,6 +18,7 @@ import {
   ShieldCheck,
   FileText,
   BookOpen,
+  ListTree,
 } from "lucide-react";
 
 const navLinks = [
@@ -285,6 +286,18 @@ export function LandingPage({ isLoggedIn = false }: LandingPageProps) {
           </div>
         </div>
       </footer>
+
+      <Link
+        href="/manual/funcionamiento-sistema"
+        className="fixed bottom-3 left-3 z-40 flex max-w-[min(100vw-1.5rem,14rem)] items-center gap-1.5 rounded-full border border-white/10 bg-slate-950/55 px-2.5 py-1.5 text-[10px] font-medium text-slate-500 shadow-lg shadow-black/20 backdrop-blur-md transition hover:border-white/18 hover:text-slate-300 sm:bottom-4 sm:left-4 sm:max-w-none sm:px-3 sm:text-[11px]"
+        aria-label="Ver funcionamiento del sistema y requisitos IEEE 830"
+      >
+        <ListTree className="h-3 w-3 shrink-0 opacity-70 sm:h-3.5 sm:w-3.5" aria-hidden />
+        <span className="leading-tight">
+          Funcionamiento <span className="text-slate-600 sm:inline">·</span>{" "}
+          <span className="hidden sm:inline">requisitos</span>
+        </span>
+      </Link>
     </div>
   );
 }
