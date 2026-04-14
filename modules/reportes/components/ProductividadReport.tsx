@@ -13,6 +13,8 @@ import {
   type ProductividadBlock,
 } from "../productividadReportActions";
 import { ReportQueryToolbar } from "./ReportQueryToolbar";
+import { ProductividadBarChart } from "./ProductividadBarChart";
+import { productividadMaquinasToChartItems } from "../productividadChartUtils";
 
 function productividadToExcelRows(maquinas: ProductividadMaquinaGroup[]): (string | number)[][] {
   const head = [
@@ -171,6 +173,12 @@ export function ProductividadReport({ planta }: ProductividadReportProps) {
     [maquinas]
   );
 
+  const productividadChartItems = useMemo(
+    () =>
+      maquinas && maquinas.length > 0 ? productividadMaquinasToChartItems(maquinas) : [],
+    [maquinas]
+  );
+
   const exportLabelSuffix =
     mode === "day" ? day : mode === "month" ? monthYm : `${rangeStart}_${rangeEnd}`;
 
@@ -247,6 +255,14 @@ export function ProductividadReport({ planta }: ProductividadReportProps) {
             </>
           )}
         </p>
+      )}
+
+      {productividadChartItems.length > 0 && !loading && !error && (
+        <ProductividadBarChart
+          className="mt-4"
+          items={productividadChartItems}
+          title="Productividad por máquina / no. máquina (% del periodo)"
+        />
       )}
 
       {maquinas && maquinas.length > 0 && (

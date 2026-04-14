@@ -298,34 +298,40 @@ function parseClipboardTsv(text: string): string[][] {
 function applyCapturaFilters(
   rowList: ProduccionRowState[],
   globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
+  columnFilters: Record<string, Set<string> | null>,
+  columnPrefixFilters: Record<string, string | null>
 ): ProduccionRowState[] {
   return rowList.filter(
     (row) =>
       rowMatchesGlobalSearch(row, globalSearch) &&
-      rowMatchesColumnFilters(row, columnFilters)
+      rowMatchesColumnFilters(row, columnFilters, columnPrefixFilters)
   );
 }
 
 function applyCapturaFiltersOnDisplayOrder(
   rowList: ProduccionRowState[],
   globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
+  columnFilters: Record<string, Set<string> | null>,
+  columnPrefixFilters: Record<string, string | null>
 ): ProduccionRowState[] {
   return applyCapturaFilters(
     orderRowsWithEmptyFechaLast(rowList),
     globalSearch,
-    columnFilters
+    columnFilters,
+    columnPrefixFilters
   );
 }
 
 function capturaFiltersActive(
   globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
+  columnFilters: Record<string, Set<string> | null>,
+  columnPrefixFilters: Record<string, string | null>
 ): boolean {
   if (globalSearch.trim() !== "") return true;
   for (const { key } of CAPTURA_COLUMNS) {
     if (columnFilters[key] !== null) return true;
+    const p = columnPrefixFilters[key];
+    if (p != null && String(p).trim() !== "") return true;
   }
   return false;
 }
@@ -353,11 +359,19 @@ export function CapturaProduccionClient({
     }
   );
 
+  const [columnPrefixFilters, setColumnPrefixFilters] = useState<
+    Record<string, string | null>
+  >(() => {
+    const o: Record<string, string | null> = {};
+    for (const { key } of CAPTURA_COLUMNS) o[key] = null;
+    return o;
+  });
+
   const [filterOpenCol, setFilterOpenCol] = useState<string | null>(null);
 
   const filtersActive = useMemo(
-    () => capturaFiltersActive(globalSearch, columnFilters),
-    [globalSearch, columnFilters]
+    () => capturaFiltersActive(globalSearch, columnFilters, columnPrefixFilters),
+    [globalSearch, columnFilters, columnPrefixFilters]
   );
   /** Búsqueda/filtros aplicados o panel de filtro abierto → cargar todas las filas desde BD. */
   const needsFullDataset = useMemo(
@@ -376,6 +390,11 @@ export function CapturaProduccionClient({
     setFilterOpenCol(null);
     setColumnFilters(() => {
       const o: Record<string, Set<string> | null> = {};
+      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
+      return o;
+    });
+    setColumnPrefixFilters(() => {
+      const o: Record<string, string | null> = {};
       for (const { key } of CAPTURA_COLUMNS) o[key] = null;
       return o;
     });
@@ -405,6 +424,12 @@ export function CapturaProduccionClient({
   const [saveBanner, setSaveBanner] = useState<string | null>(null);
   const [importingImage, setImportingImage] = useState(false);
   const [exportExcelLoading, setExportExcelLoading] = useState(false);
+  /** Evita mismatch de hidratación en la tabla (filtros, breakpoints, etc.): solo montar la hoja en el cliente. */
+  const [sheetReady, setSheetReady] = useState(false);
+  useEffect(() => {
+    setSheetReady(true);
+  }, []);
+
   const importInputRef = useRef<HTMLInputElement>(null);
   /** Realtime llegó durante edición: refrescar al cerrar la celda. */
   const pendingRemoteReloadRef = useRef(false);
@@ -434,14 +459,22 @@ export function CapturaProduccionClient({
   globalSearchRef.current = globalSearch;
   const columnFiltersRef = useRef(columnFilters);
   columnFiltersRef.current = columnFilters;
+  const columnPrefixFiltersRef = useRef(columnPrefixFilters);
+  columnPrefixFiltersRef.current = columnPrefixFilters;
 
   /** Arrastre de relleno tipo Excel (no extender selección con mouse). */
   const isFillDraggingRef = useRef(false);
   const [fillPreviewKeys, setFillPreviewKeys] = useState<Set<string> | null>(null);
 
   const displayRows = useMemo(
-    () => applyCapturaFiltersOnDisplayOrder(rows, globalSearch, columnFilters),
-    [rows, globalSearch, columnFilters]
+    () =>
+      applyCapturaFiltersOnDisplayOrder(
+        rows,
+        globalSearch,
+        columnFilters,
+        columnPrefixFilters
+      ),
+    [rows, globalSearch, columnFilters, columnPrefixFilters]
   );
 
   const fillAnchor = useMemo(() => {
@@ -643,7 +676,9 @@ export function CapturaProduccionClient({
     prevNeedsFullDatasetRef.current = true;
     setFilterDatasetLoading(true);
     let cancelled = false;
-    const debounceMs = filterOpenCol !== null ? 0 : 350;
+    /** Sin espera si hay búsqueda o panel de filtro: se necesitan todos los registros ya. */
+    const debounceMs =
+      filterOpenCol !== null || globalSearch.trim() !== "" ? 0 : 350;
     const timer = setTimeout(() => {
       void (async () => {
         try {
@@ -673,7 +708,7 @@ export function CapturaProduccionClient({
       clearTimeout(timer);
       setFilterDatasetLoading(false);
     };
-  }, [needsFullDataset, filterOpenCol, planta, clearAllSaveTimers, ensureTrailing]);
+  }, [needsFullDataset, filterOpenCol, globalSearch, planta, clearAllSaveTimers, ensureTrailing]);
 
   const reloadFromDb = useCallback(async () => {
     if (editingRef.current) {
@@ -824,10 +859,11 @@ export function CapturaProduccionClient({
   }, [loadOlderRows]);
 
   useLayoutEffect(() => {
+    if (!sheetReady) return;
     const el = scrollRef.current;
     if (!el) return;
     el.scrollTop = el.scrollHeight;
-  }, []);
+  }, [sheetReady]);
 
   const persistRowBySaveKeyRef = useRef<(key: string) => Promise<boolean>>(async () => true);
 
@@ -1068,7 +1104,8 @@ export function CapturaProduccionClient({
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
           globalSearchRef.current,
-          columnFiltersRef.current
+          columnFiltersRef.current,
+          columnPrefixFiltersRef.current
         );
         const maxR = disp.length - 1;
         const maxC = CAPTURA_COLUMNS.length - 1;
@@ -1123,7 +1160,8 @@ export function CapturaProduccionClient({
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
           globalSearchRef.current,
-          columnFiltersRef.current
+          columnFiltersRef.current,
+          columnPrefixFiltersRef.current
         );
         const maxR = disp.length - 1;
         const maxC = CAPTURA_COLUMNS.length - 1;
@@ -1302,7 +1340,8 @@ export function CapturaProduccionClient({
       const dispNow = applyCapturaFiltersOnDisplayOrder(
         rowsRef.current,
         globalSearch,
-        columnFilters
+        columnFilters,
+        columnPrefixFilters
       );
       if (dispNow.length === 0) return;
 
@@ -1369,17 +1408,32 @@ export function CapturaProduccionClient({
           ...r,
           values: { ...r.values },
         }));
-        let disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+        let disp = applyCapturaFiltersOnDisplayOrder(
+          copy,
+          globalSearch,
+          columnFilters,
+          columnPrefixFilters
+        );
         const needBottom = originDr + matrix.length;
         let added = 0;
         const MAX_GROW = 500;
         while (disp.length < needBottom && added < MAX_GROW) {
           copy.push(createBlankRow());
           added++;
-          disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+          disp = applyCapturaFiltersOnDisplayOrder(
+            copy,
+            globalSearch,
+            columnFilters,
+            columnPrefixFilters
+          );
         }
         copy = ensureTrailing(copy);
-        disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+        disp = applyCapturaFiltersOnDisplayOrder(
+          copy,
+          globalSearch,
+          columnFilters,
+          columnPrefixFilters
+        );
 
         const maxR = Math.min(matrix.length, Math.max(0, disp.length - originDr));
         if (maxR <= 0) {
@@ -1423,6 +1477,7 @@ export function CapturaProduccionClient({
       selected,
       globalSearch,
       columnFilters,
+      columnPrefixFilters,
       pushUndo,
       ensureTrailing,
       scheduleSave,
@@ -1700,8 +1755,8 @@ export function CapturaProduccionClient({
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col gap-3 sm:gap-4">
-      <div className="flex shrink-0 flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-        <div>
+      <div className="flex min-w-0 w-full shrink-0 flex-col gap-3 sm:gap-4">
+        <div className="min-w-0">
           <h1 className="text-xl font-semibold text-white">Captura de producción</h1>
           <p className="text-sm text-slate-500">
             Planta:{" "}
@@ -1711,17 +1766,19 @@ export function CapturaProduccionClient({
             · Autoguardado al editar celdas
           </p>
         </div>
-        <div className="flex w-full max-w-2xl items-center gap-2">
-          <div className="w-full max-w-md">
+
+        <div className="flex min-w-0 w-full flex-wrap items-stretch gap-2">
+          <div className="w-full min-w-0 basis-full sm:basis-0 sm:grow sm:max-w-xl lg:max-w-2xl">
             <Input
               aria-label="Búsqueda en tabla"
               placeholder="Buscar en todos los campos…"
               value={globalSearch}
               onValueChange={setGlobalSearch}
-              startContent={<Search className="h-4 w-4 text-slate-500" />}
+              startContent={<Search className="h-4 w-4 shrink-0 text-slate-500" />}
               classNames={{
+                base: "w-full min-w-0 max-w-full",
                 inputWrapper:
-                  "border border-sky-500/35 bg-slate-950/80 shadow-[0_0_20px_-10px_rgba(34,211,238,0.35)] data-[hover=true]:border-orange-400/40",
+                  "min-h-11 border border-sky-500/35 bg-slate-950/80 shadow-[0_0_20px_-10px_rgba(34,211,238,0.35)] data-[hover=true]:border-orange-400/40",
               }}
             />
           </div>
@@ -1736,25 +1793,32 @@ export function CapturaProduccionClient({
             type="button"
             onClick={openImportPicker}
             disabled={importingImage}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-sky-500/40 bg-sky-600/20 px-3 py-2 text-sm font-medium text-sky-100 transition hover:bg-sky-600/30 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-0 flex-1 items-center justify-center gap-2 rounded-lg border border-sky-500/40 bg-sky-600/20 px-2.5 py-2 text-xs font-medium text-sky-100 transition hover:bg-sky-600/30 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:min-w-0 sm:flex-none sm:px-3 sm:text-sm"
           >
-            <ImageUp className="h-4 w-4" />
-            {importingImage ? "Analizando..." : "Subir reporte"}
+            <ImageUp className="h-4 w-4 shrink-0" />
+            <span className="truncate sm:whitespace-normal">
+              {importingImage ? "Analizando…" : "Subir reporte"}
+            </span>
           </button>
           <button
             type="button"
             onClick={() => void exportToExcel()}
             disabled={exportExcelLoading}
-            className="inline-flex shrink-0 items-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-600/15 px-3 py-2 text-sm font-medium text-emerald-100 transition hover:bg-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50"
+            className="inline-flex min-h-11 min-w-[5.5rem] flex-1 items-center justify-center gap-2 rounded-lg border border-emerald-500/35 bg-emerald-600/15 px-2.5 py-2 text-xs font-medium text-emerald-100 transition hover:bg-emerald-600/25 disabled:cursor-not-allowed disabled:opacity-50 sm:h-10 sm:flex-none sm:px-3 sm:text-sm"
           >
-            <FileSpreadsheet className="h-4 w-4" />
+            <FileSpreadsheet className="h-4 w-4 shrink-0" />
             {exportExcelLoading ? "Exportando…" : "Excel"}
           </button>
-          <InstantLastDayReportButton
-            planta={planta}
-            size="md"
-            className="inline-flex h-10 shrink-0 border-orange-500/40 bg-orange-950/35 px-3 text-sm font-medium text-orange-100"
-          />
+          <div className="flex w-full min-w-0 basis-full sm:basis-auto sm:w-auto sm:flex-none">
+            <InstantLastDayReportButton
+              planta={planta}
+              size="md"
+              className="h-11 min-h-11 w-full min-w-0 justify-center border-orange-500/40 bg-orange-950/35 px-2.5 text-xs font-medium text-orange-100 sm:h-10 sm:min-h-10 sm:w-auto sm:px-3 sm:text-sm"
+            >
+              <span className="inline sm:hidden">Último día</span>
+              <span className="hidden sm:inline">Reporte del último día</span>
+            </InstantLastDayReportButton>
+          </div>
         </div>
       </div>
 
@@ -1801,6 +1865,21 @@ export function CapturaProduccionClient({
         </div>
       )}
 
+      {!sheetReady ? (
+        <div
+          className="flex min-h-[min(70vh,36rem)] min-w-0 flex-1 flex-col items-center justify-center gap-4 rounded-xl border border-sky-500/25 bg-[rgb(22_42_74_/_0.35)] px-6 py-16 text-center"
+          aria-busy="true"
+          aria-live="polite"
+        >
+          <div
+            className="h-9 w-9 shrink-0 animate-spin rounded-full border-2 border-sky-500/30 border-t-sky-400"
+            aria-hidden
+          />
+          <p className="max-w-sm text-sm text-slate-400">
+            Preparando la hoja de captura en el navegador…
+          </p>
+        </div>
+      ) : (
       <div
         ref={gridRef}
         tabIndex={0}
@@ -1845,7 +1924,12 @@ export function CapturaProduccionClient({
                         </span>
                         <button
                           type="button"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sky-300/80 transition hover:bg-orange-600/25 hover:text-orange-100"
+                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition hover:bg-orange-600/25 hover:text-orange-100 ${
+                            columnFilters[col.key] !== null ||
+                            (columnPrefixFilters[col.key]?.trim() ?? "") !== ""
+                              ? "text-orange-200 ring-1 ring-orange-400/50"
+                              : "text-sky-300/80"
+                          }`}
                           aria-label={`Filtro ${col.label}`}
                           onClick={(ev) => {
                             ev.stopPropagation();
@@ -1868,8 +1952,22 @@ export function CapturaProduccionClient({
                           label={col.label}
                           options={distinctColumnValues(rows, col.key)}
                           selected={columnFilters[col.key]}
+                          activePrefix={columnPrefixFilters[col.key]}
                           onApply={(set) => {
                             setColumnFilters((prev) => ({ ...prev, [col.key]: set }));
+                            setColumnPrefixFilters((prev) => ({
+                              ...prev,
+                              [col.key]: null,
+                            }));
+                            setFilterOpenCol(null);
+                          }}
+                          onApplyPrefix={(prefix) => {
+                            const p = prefix?.trim() || null;
+                            setColumnPrefixFilters((prev) => ({
+                              ...prev,
+                              [col.key]: p,
+                            }));
+                            setColumnFilters((prev) => ({ ...prev, [col.key]: null }));
                             setFilterOpenCol(null);
                           }}
                           onClose={() => setFilterOpenCol(null)}
@@ -2074,6 +2172,7 @@ export function CapturaProduccionClient({
           </table>
         </div>
       </div>
+      )}
     </div>
   );
 }
@@ -2083,14 +2182,18 @@ function ColumnFilterPanel({
   label,
   options,
   selected,
+  activePrefix,
   onApply,
+  onApplyPrefix,
   onClose,
 }: {
   colKey: string;
   label: string;
   options: string[];
   selected: Set<string> | null;
+  activePrefix: string | null;
   onApply: (set: Set<string> | null) => void;
+  onApplyPrefix: (prefix: string | null) => void;
   onClose: () => void;
 }) {
   const initial = useMemo(() => {
@@ -2099,15 +2202,15 @@ function ColumnFilterPanel({
   }, [selected, options]);
 
   const [local, setLocal] = useState<Set<string>>(() => new Set(initial));
-  const [search, setSearch] = useState("");
+  const [search, setSearch] = useState(() => activePrefix?.trim() ?? "");
 
   useEffect(() => {
     setLocal(new Set(initial));
   }, [initial, colKey]);
 
   useEffect(() => {
-    setSearch("");
-  }, [colKey]);
+    setSearch(activePrefix?.trim() ?? "");
+  }, [colKey, activePrefix]);
 
   const searchInputRef = useRef<HTMLInputElement>(null);
   useLayoutEffect(() => {
@@ -2120,13 +2223,26 @@ function ColumnFilterPanel({
   const filteredOptions = useMemo(() => {
     const q = search.trim().toLowerCase();
     if (!q) return options;
-    return options.filter((o) => o.toLowerCase().includes(q));
+    return options.filter((o) => {
+      const lo = o.toLowerCase();
+      return lo.startsWith(q) || lo.includes(q);
+    });
   }, [options, search]);
 
-  const commitApply = () => {
+  const commitApplyCheckboxes = () => {
     if (local.size === 0) onApply(new Set());
     else if (local.size === options.length) onApply(null);
     else onApply(new Set(local));
+  };
+
+  /** Con texto: igual que la barra general (prefijo), solo esta columna. Sin texto: filtro por valores marcados. */
+  const commitApplyFromForm = () => {
+    const q = search.trim();
+    if (q !== "") {
+      onApplyPrefix(q);
+      return;
+    }
+    commitApplyCheckboxes();
   };
 
   const ref = useRef<HTMLDivElement>(null);
@@ -2161,7 +2277,7 @@ function ColumnFilterPanel({
         className="flex flex-col"
         onSubmit={(e) => {
           e.preventDefault();
-          commitApply();
+          commitApplyFromForm();
         }}
         onKeyDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
@@ -2173,12 +2289,29 @@ function ColumnFilterPanel({
           value={search}
           onChange={(e) => setSearch(e.target.value)}
           onKeyDown={(e) => e.stopPropagation()}
-          placeholder="Buscar valores…"
-          enterKeyHint="done"
-          className="mb-2 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-orange-500/30"
+          placeholder={`Ej. prefijo en ${label}…`}
+          enterKeyHint="search"
+          className="mb-1 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-orange-500/30"
           autoComplete="off"
-          aria-label={`Buscar en filtro ${label}`}
+          aria-label={`Filtro por texto en columna ${label}`}
         />
+        <p className="mb-2 px-0.5 text-[10px] leading-snug text-slate-500">
+          Con texto: <span className="text-slate-400">Aplicar</span> filtra filas donde{" "}
+          <span className="font-medium text-slate-400">{label}</span> empieza por ese valor (como la
+          búsqueda general). Deja el campo vacío para usar solo las casillas de abajo.
+        </p>
+        {(activePrefix?.trim() ?? "") !== "" && (
+          <button
+            type="button"
+            className="mb-2 w-full rounded-lg border border-white/10 bg-slate-800/80 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700/80"
+            onClick={() => onApplyPrefix(null)}
+          >
+            Quitar filtro por texto
+          </button>
+        )}
+        <p className="mb-1 px-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
+          Valores concretos
+        </p>
         <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-950/40 px-2 py-1.5 text-xs text-orange-100 hover:bg-orange-900/50">
           <input
             type="checkbox"
@@ -2227,6 +2360,11 @@ function ColumnFilterPanel({
           <button
             type="submit"
             className="flex-1 rounded-lg bg-sky-600 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
+            aria-label={
+              search.trim() !== ""
+                ? `Aplicar filtro por texto en ${label}`
+                : "Aplicar filtro por valores marcados"
+            }
           >
             Aplicar
           </button>

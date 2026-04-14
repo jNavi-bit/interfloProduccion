@@ -228,3 +228,11 @@ export async function getInstantLastDayMachineReport(planta: PlantaValue): Promi
     productividadOmittedRows: prodAgg.omittedCount,
   };
 }
+
+export type InstantLastDayReportResult = Awaited<
+  ReturnType<typeof getInstantLastDayMachineReport>
+>;
+export type InstantLastDayReportSuccess = Extract<
+  InstantLastDayReportResult,
+  { ok: true }
+>;

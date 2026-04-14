@@ -122,7 +122,8 @@ export function MantenimientoDbPanel() {
             labelPlacement="outside-top"
             variant="bordered"
             radius="lg"
-            className="max-w-xs"
+            className="w-full max-w-full sm:max-w-xs"
+            classNames={{ base: "w-full max-w-full" }}
             value={safeParse(fechaCorte)}
             onChange={(d) => {
               if (d) {
@@ -216,7 +217,8 @@ export function MantenimientoDbPanel() {
               onValueChange={setConfirmText}
               autoComplete="off"
               placeholder={CONFIRM}
-              className="max-w-md"
+              className="w-full sm:max-w-md"
+              classNames={{ base: "w-full max-w-full sm:max-w-md" }}
             />
             <Button
               color="danger"

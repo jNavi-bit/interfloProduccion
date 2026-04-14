@@ -1,12 +1,14 @@
 import { Trash2, Layers, Factory, Zap } from "lucide-react";
-import { PLANTA_OPTIONS } from "@/modules/dashboard/plants";
+import { LastDayMachineReportClientSection } from "@/modules/reportes/components/LastDayMachineReportClientSection";
+import { getInstantLastDayMachineReport } from "@/modules/reportes/instantLastDayReportActions";
+import { PLANTA_OPTIONS, type PlantaValue } from "@/modules/dashboard/plants";
 import { StatCard } from "./StatCard";
 import { getDashboardHomeData } from "../queries";
 import type { UserProfile } from "../types";
 
 interface HomePageProps {
   user: UserProfile;
-  planta: string;
+  planta: PlantaValue;
 }
 
 function formatLastCapturedLabel(iso: string): string {
@@ -23,7 +25,10 @@ function formatLastCapturedLabel(iso: string): string {
 }
 
 export async function HomePage({ user, planta }: HomePageProps) {
-  const { stats, recentActivity } = await getDashboardHomeData(planta);
+  const [{ stats, recentActivity }, lastDayReport] = await Promise.all([
+    getDashboardHomeData(planta),
+    getInstantLastDayMachineReport(planta),
+  ]);
   const lastDayLabel = stats.lastDate ? formatLastCapturedLabel(stats.lastDate) : null;
   const plantaLabel =
     PLANTA_OPTIONS.find((o) => o.value === planta)?.label ?? planta;
@@ -81,6 +86,31 @@ export async function HomePage({ user, planta }: HomePageProps) {
           color="orange"
         />
       </div>
+
+      <section className="rounded-xl border border-orange-500/25 bg-orange-950/[0.12] p-4 sm:p-6">
+        <h2 className="font-display text-lg font-semibold text-strong">
+          Resumen por máquina (última fecha con reportes)
+        </h2>
+        {lastDayReport.ok ? (
+          <>
+            <p className="mt-1 text-sm text-mute">
+              <span className="font-medium text-main">{lastDayReport.fechaDisplay}</span>
+              <span className="font-mono text-subtle"> ({lastDayReport.fechaIso})</span>
+              {" · "}
+              {lastDayReport.sourceRowCount} registro
+              {lastDayReport.sourceRowCount !== 1 ? "s" : ""} en ese día
+            </p>
+            <LastDayMachineReportClientSection
+              report={lastDayReport}
+              planta={planta}
+              fechaIso={lastDayReport.fechaIso}
+              scrollClassName="max-h-[min(70vh,42rem)]"
+            />
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-mute">{lastDayReport.error}</p>
+        )}
+      </section>
 
       <div>
         <h2 className="font-display text-lg font-semibold text-strong">

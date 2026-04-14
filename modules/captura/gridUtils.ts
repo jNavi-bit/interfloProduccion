@@ -66,23 +66,57 @@ export function orderRowsWithEmptyFechaLast(rows: ProduccionRowState[]): Producc
   return [...withFecha, ...withoutFecha];
 }
 
+/**
+ * Búsqueda global: cada palabra (separada por espacios) debe coincidir con **al menos un campo**
+ * donde el valor **empiece por** ese texto (tras trim, sin distinguir mayúsculas).
+ * Así "42182" encuentra SKU "421821" sin escribir el SKU completo.
+ */
 export function rowMatchesGlobalSearch(
   row: ProduccionRowState,
   q: string
 ): boolean {
-  if (!q.trim()) return true;
+  const tokens = q
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (tokens.length === 0) return true;
+
+  for (const needle of tokens) {
+    const anyColumn = CAPTURA_COLUMNS.some((c) => {
+      const cell = (row.values[c.key] ?? "").trim().toLowerCase();
+      return cell.startsWith(needle);
+    });
+    if (!anyColumn) return false;
+  }
+  return true;
+}
+
+/**
+ * Filtro por texto en una sola columna: el valor (trim) debe **empezar por** la consulta (trim),
+ * sin distinguir mayúsculas. Igual criterio de prefijo que la búsqueda global, aplicado solo a `colKey`.
+ */
+export function rowMatchesColumnSearchQuery(
+  row: ProduccionRowState,
+  colKey: string,
+  q: string
+): boolean {
   const needle = q.trim().toLowerCase();
-  const hay = CAPTURA_COLUMNS.map((c) => (row.values[c.key] ?? "").toLowerCase()).join(
-    "\u0000"
-  );
-  return hay.includes(needle);
+  if (needle === "") return true;
+  const cell = (row.values[colKey] ?? "").trim().toLowerCase();
+  return cell.startsWith(needle);
 }
 
 export function rowMatchesColumnFilters(
   row: ProduccionRowState,
-  filters: Record<string, Set<string> | null>
+  filters: Record<string, Set<string> | null>,
+  prefixFilters: Record<string, string | null> = {}
 ): boolean {
   for (const { key } of CAPTURA_COLUMNS) {
+    const pfxRaw = prefixFilters[key];
+    if (pfxRaw != null && String(pfxRaw).trim() !== "") {
+      if (!rowMatchesColumnSearchQuery(row, key, String(pfxRaw))) return false;
+    }
     const allowed = filters[key];
     if (allowed === null) continue;
     if (allowed.size === 0) return false;

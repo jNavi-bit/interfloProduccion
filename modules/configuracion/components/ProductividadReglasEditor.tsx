@@ -262,9 +262,10 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 <span className="font-mono text-[10px] text-subtle">{r.id.slice(0, 8)}…</span>
               </div>
 
-              <div className="grid w-full min-w-0 grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid w-full min-w-0 grid-cols-1 gap-x-4 gap-y-5 sm:grid-cols-2 lg:grid-cols-3 lg:items-start">
                 <Input
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Etiqueta"
                   labelPlacement="outside-top"
                   size="sm"
@@ -276,6 +277,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 />
                 <Select
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Planta"
                   labelPlacement="outside-top"
                   size="sm"
@@ -299,6 +301,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 </Select>
                 <NumberInput
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full", inputWrapper: "min-h-10" }}
                   label="Prioridad"
                   labelPlacement="outside-top"
                   size="sm"
@@ -310,10 +313,10 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                   onValueChange={(v) =>
                     updateField(r.id, { prioridad: typeof v === "number" && !Number.isNaN(v) ? v : 0 })
                   }
-                  description="Mayor número → se evalúa antes si varias reglas encajan (ver cuadro arriba)."
                 />
                 <Input
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Patrón máquina"
                   labelPlacement="outside-top"
                   size="sm"
@@ -325,6 +328,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 />
                 <Select
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Modo máquina"
                   labelPlacement="outside-top"
                   size="sm"
@@ -347,6 +351,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 </Select>
                 <Select
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="No. máquina"
                   labelPlacement="outside-top"
                   size="sm"
@@ -385,6 +390,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 )}
                 <NumberInput
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full", inputWrapper: "min-h-10" }}
                   label="Capacidad diaria"
                   labelPlacement="outside-top"
                   size="sm"
@@ -407,6 +413,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 />
                 <Select
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Métrica numerador"
                   labelPlacement="outside-top"
                   size="sm"
@@ -429,6 +436,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 </Select>
                 <NumberInput
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full", inputWrapper: "min-h-10" }}
                   label="Multiplicador"
                   labelPlacement="outside-top"
                   size="sm"
@@ -446,6 +454,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 />
                 <Select
                   className="w-full min-w-0"
+                  classNames={{ base: "w-full max-w-full" }}
                   label="Filtro producto"
                   labelPlacement="outside-top"
                   size="sm"
@@ -469,6 +478,7 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                 {f.producto_modo === "igual_normalizado" && (
                   <Input
                     className="w-full min-w-0"
+                    classNames={{ base: "w-full max-w-full" }}
                     label="Valor producto"
                     labelPlacement="outside-top"
                     size="sm"
@@ -479,19 +489,19 @@ export function ProductividadReglasEditor({ isAdmin }: ProductividadReglasEditor
                     onValueChange={(v) => updateField(r.id, { producto_valor: v })}
                   />
                 )}
-                <div className="flex flex-col gap-2 text-xs sm:col-span-2 lg:col-span-1">
+                <div className="flex min-h-10 w-full flex-wrap items-center gap-x-8 gap-y-2 sm:col-span-2 lg:col-span-3">
                   <Checkbox
                     size="sm"
+                    classNames={{ label: "text-sm text-main" }}
                     isSelected={f.omitir_en_reporte}
                     isDisabled={!isAdmin}
                     onValueChange={(v) => updateField(r.id, { omitir_en_reporte: v })}
                   >
                     Omitir en reporte
                   </Checkbox>
-                </div>
-                <div className="flex items-center text-xs">
                   <Checkbox
                     size="sm"
+                    classNames={{ label: "text-sm text-main" }}
                     isSelected={f.activo}
                     isDisabled={!isAdmin}
                     onValueChange={(v) => updateField(r.id, { activo: v })}

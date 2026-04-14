@@ -59,13 +59,22 @@ export function orderRowsWithEmptyFechaLast(rows: EntregaPtRowState[]): EntregaP
   return [...withFecha, ...withoutFecha];
 }
 
+/** Igual que captura: cada palabra debe coincidir por prefijo en algún campo. */
 export function rowMatchesGlobalSearch(row: EntregaPtRowState, q: string): boolean {
-  if (!q.trim()) return true;
-  const needle = q.trim().toLowerCase();
-  const hay = ENTREGA_PT_COLUMNS.map((c) => (row.values[c.key] ?? "").toLowerCase()).join(
-    "\u0000"
-  );
-  return hay.includes(needle);
+  const tokens = q
+    .trim()
+    .split(/\s+/)
+    .map((t) => t.trim().toLowerCase())
+    .filter(Boolean);
+  if (tokens.length === 0) return true;
+  for (const needle of tokens) {
+    const anyColumn = ENTREGA_PT_COLUMNS.some((c) => {
+      const cell = (row.values[c.key] ?? "").trim().toLowerCase();
+      return cell.startsWith(needle);
+    });
+    if (!anyColumn) return false;
+  }
+  return true;
 }
 
 export function rowMatchesColumnFilters(
