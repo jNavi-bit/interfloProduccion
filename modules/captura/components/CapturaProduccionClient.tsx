@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@heroui/react";
 import {
-  Filter,
   FilterX,
   Search,
   AlertCircle,
@@ -24,8 +23,6 @@ import {
   isRowOnlyDefaultTurno,
   orderRowsWithEmptyFechaLast,
   rowMatchesGlobalSearch,
-  rowMatchesColumnFilters,
-  distinctColumnValues,
   findColumnSuggestion,
   mergeColumnSuggestion,
   computeFillTargetCells,
@@ -297,43 +294,20 @@ function parseClipboardTsv(text: string): string[][] {
 
 function applyCapturaFilters(
   rowList: ProduccionRowState[],
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>,
-  columnPrefixFilters: Record<string, string | null>
+  globalSearch: string
 ): ProduccionRowState[] {
-  return rowList.filter(
-    (row) =>
-      rowMatchesGlobalSearch(row, globalSearch) &&
-      rowMatchesColumnFilters(row, columnFilters, columnPrefixFilters)
-  );
+  return rowList.filter((row) => rowMatchesGlobalSearch(row, globalSearch));
 }
 
 function applyCapturaFiltersOnDisplayOrder(
   rowList: ProduccionRowState[],
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>,
-  columnPrefixFilters: Record<string, string | null>
+  globalSearch: string
 ): ProduccionRowState[] {
-  return applyCapturaFilters(
-    orderRowsWithEmptyFechaLast(rowList),
-    globalSearch,
-    columnFilters,
-    columnPrefixFilters
-  );
+  return applyCapturaFilters(orderRowsWithEmptyFechaLast(rowList), globalSearch);
 }
 
-function capturaFiltersActive(
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>,
-  columnPrefixFilters: Record<string, string | null>
-): boolean {
-  if (globalSearch.trim() !== "") return true;
-  for (const { key } of CAPTURA_COLUMNS) {
-    if (columnFilters[key] !== null) return true;
-    const p = columnPrefixFilters[key];
-    if (p != null && String(p).trim() !== "") return true;
-  }
-  return false;
+function capturaFiltersActive(globalSearch: string): boolean {
+  return globalSearch.trim() !== "";
 }
 
 export function CapturaProduccionClient({
@@ -351,33 +325,13 @@ export function CapturaProduccionClient({
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean>(initialHasMoreOlder);
   const [loadingMore, setLoadingMore] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string> | null>>(
-    () => {
-      const o: Record<string, Set<string> | null> = {};
-      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
-      return o;
-    }
-  );
-
-  const [columnPrefixFilters, setColumnPrefixFilters] = useState<
-    Record<string, string | null>
-  >(() => {
-    const o: Record<string, string | null> = {};
-    for (const { key } of CAPTURA_COLUMNS) o[key] = null;
-    return o;
-  });
-
-  const [filterOpenCol, setFilterOpenCol] = useState<string | null>(null);
 
   const filtersActive = useMemo(
-    () => capturaFiltersActive(globalSearch, columnFilters, columnPrefixFilters),
-    [globalSearch, columnFilters, columnPrefixFilters]
+    () => capturaFiltersActive(globalSearch),
+    [globalSearch]
   );
-  /** Búsqueda/filtros aplicados o panel de filtro abierto → cargar todas las filas desde BD. */
-  const needsFullDataset = useMemo(
-    () => filtersActive || filterOpenCol !== null,
-    [filtersActive, filterOpenCol]
-  );
+  /** Búsqueda activa → cargar todas las filas desde BD. */
+  const needsFullDataset = useMemo(() => filtersActive, [filtersActive]);
   const needsFullDatasetRef = useRef(false);
   useEffect(() => {
     needsFullDatasetRef.current = needsFullDataset;
@@ -387,17 +341,6 @@ export function CapturaProduccionClient({
 
   const clearAllAppliedFilters = useCallback(() => {
     setGlobalSearch("");
-    setFilterOpenCol(null);
-    setColumnFilters(() => {
-      const o: Record<string, Set<string> | null> = {};
-      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
-      return o;
-    });
-    setColumnPrefixFilters(() => {
-      const o: Record<string, string | null> = {};
-      for (const { key } of CAPTURA_COLUMNS) o[key] = null;
-      return o;
-    });
   }, []);
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -457,24 +400,14 @@ export function CapturaProduccionClient({
 
   const globalSearchRef = useRef(globalSearch);
   globalSearchRef.current = globalSearch;
-  const columnFiltersRef = useRef(columnFilters);
-  columnFiltersRef.current = columnFilters;
-  const columnPrefixFiltersRef = useRef(columnPrefixFilters);
-  columnPrefixFiltersRef.current = columnPrefixFilters;
 
   /** Arrastre de relleno tipo Excel (no extender selección con mouse). */
   const isFillDraggingRef = useRef(false);
   const [fillPreviewKeys, setFillPreviewKeys] = useState<Set<string> | null>(null);
 
   const displayRows = useMemo(
-    () =>
-      applyCapturaFiltersOnDisplayOrder(
-        rows,
-        globalSearch,
-        columnFilters,
-        columnPrefixFilters
-      ),
-    [rows, globalSearch, columnFilters, columnPrefixFilters]
+    () => applyCapturaFiltersOnDisplayOrder(rows, globalSearch),
+    [rows, globalSearch]
   );
 
   const fillAnchor = useMemo(() => {
@@ -659,7 +592,7 @@ export function CapturaProduccionClient({
             });
           } catch {
             if (!cancelled) {
-              setSaveBanner("No se pudo restaurar la vista al quitar filtros.");
+              setSaveBanner("No se pudo restaurar la vista al quitar la búsqueda.");
               setTimeout(() => setSaveBanner(null), 5000);
             }
           } finally {
@@ -676,16 +609,15 @@ export function CapturaProduccionClient({
     prevNeedsFullDatasetRef.current = true;
     setFilterDatasetLoading(true);
     let cancelled = false;
-    /** Sin espera si hay búsqueda o panel de filtro: se necesitan todos los registros ya. */
-    const debounceMs =
-      filterOpenCol !== null || globalSearch.trim() !== "" ? 0 : 350;
+    /** Sin espera si hay búsqueda: se necesitan todos los registros ya. */
+    const debounceMs = globalSearch.trim() !== "" ? 0 : 350;
     const timer = setTimeout(() => {
       void (async () => {
         try {
           const res = await fetchAllProduccionRowsForExcel(planta);
           if (cancelled) return;
           if (!res.ok) {
-            setSaveBanner(`Búsqueda/filtros: ${res.error}`);
+            setSaveBanner(`Búsqueda: ${res.error}`);
             return;
           }
           setSaveBanner(null);
@@ -708,7 +640,7 @@ export function CapturaProduccionClient({
       clearTimeout(timer);
       setFilterDatasetLoading(false);
     };
-  }, [needsFullDataset, filterOpenCol, globalSearch, planta, clearAllSaveTimers, ensureTrailing]);
+  }, [needsFullDataset, globalSearch, planta, clearAllSaveTimers, ensureTrailing]);
 
   const reloadFromDb = useCallback(async () => {
     if (editingRef.current) {
@@ -1103,9 +1035,7 @@ export function CapturaProduccionClient({
       const previewFor = (endDr: number, endDc: number) => {
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
-          globalSearchRef.current,
-          columnFiltersRef.current,
-          columnPrefixFiltersRef.current
+          globalSearchRef.current
         );
         const maxR = disp.length - 1;
         const maxC = CAPTURA_COLUMNS.length - 1;
@@ -1159,9 +1089,7 @@ export function CapturaProduccionClient({
 
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
-          globalSearchRef.current,
-          columnFiltersRef.current,
-          columnPrefixFiltersRef.current
+          globalSearchRef.current
         );
         const maxR = disp.length - 1;
         const maxC = CAPTURA_COLUMNS.length - 1;
@@ -1339,9 +1267,7 @@ export function CapturaProduccionClient({
 
       const dispNow = applyCapturaFiltersOnDisplayOrder(
         rowsRef.current,
-        globalSearch,
-        columnFilters,
-        columnPrefixFilters
+        globalSearch
       );
       if (dispNow.length === 0) return;
 
@@ -1408,32 +1334,17 @@ export function CapturaProduccionClient({
           ...r,
           values: { ...r.values },
         }));
-        let disp = applyCapturaFiltersOnDisplayOrder(
-          copy,
-          globalSearch,
-          columnFilters,
-          columnPrefixFilters
-        );
+        let disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
         const needBottom = originDr + matrix.length;
         let added = 0;
         const MAX_GROW = 500;
         while (disp.length < needBottom && added < MAX_GROW) {
           copy.push(createBlankRow());
           added++;
-          disp = applyCapturaFiltersOnDisplayOrder(
-            copy,
-            globalSearch,
-            columnFilters,
-            columnPrefixFilters
-          );
+          disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
         }
         copy = ensureTrailing(copy);
-        disp = applyCapturaFiltersOnDisplayOrder(
-          copy,
-          globalSearch,
-          columnFilters,
-          columnPrefixFilters
-        );
+        disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
 
         const maxR = Math.min(matrix.length, Math.max(0, disp.length - originDr));
         if (maxR <= 0) {
@@ -1473,30 +1384,11 @@ export function CapturaProduccionClient({
         void runSkuLookupForRow(rowStableId, sku);
       }
     },
-    [
-      selected,
-      globalSearch,
-      columnFilters,
-      columnPrefixFilters,
-      pushUndo,
-      ensureTrailing,
-      scheduleSave,
-      runSkuLookupForRow,
-      commitEdit,
-    ]
+    [selected, globalSearch, pushUndo, ensureTrailing, scheduleSave, runSkuLookupForRow, commitEdit]
   );
 
   const onGridKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (
-        el?.closest("[data-grid-filter-panel]") ||
-        (typeof document !== "undefined" &&
-          document.activeElement?.closest?.("[data-grid-filter-panel]"))
-      ) {
-        return;
-      }
-
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -1824,11 +1716,11 @@ export function CapturaProduccionClient({
 
       {filterDatasetLoading && (
         <div className="shrink-0 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
-          Cargando todas las filas para búsqueda y filtros…
+          Cargando todas las filas para búsqueda…
         </div>
       )}
 
-      {(filtersActive || filterOpenCol !== null) && (
+      {filtersActive && (
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -1836,7 +1728,7 @@ export function CapturaProduccionClient({
             className="inline-flex items-center gap-2 rounded-lg border border-orange-500/35 bg-orange-950/40 px-3 py-1.5 text-xs font-medium text-orange-100 shadow-md transition hover:bg-orange-900/50"
           >
             <FilterX className="h-3.5 w-3.5 text-slate-400" />
-            Quitar filtros y búsqueda
+            Quitar búsqueda
           </button>
         </div>
       )}
@@ -1924,55 +1816,12 @@ export function CapturaProduccionClient({
                         </span>
                         <button
                           type="button"
-                          className={`flex h-7 w-7 shrink-0 items-center justify-center rounded-lg transition hover:bg-orange-600/25 hover:text-orange-100 ${
-                            columnFilters[col.key] !== null ||
-                            (columnPrefixFilters[col.key]?.trim() ?? "") !== ""
-                              ? "text-orange-200 ring-1 ring-orange-400/50"
-                              : "text-sky-300/80"
-                          }`}
-                          aria-label={`Filtro ${col.label}`}
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                            setFilterOpenCol((c) => (c === col.key ? null : col.key));
-                          }}
-                        >
-                          <Filter className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
                           tabIndex={-1}
                           aria-label={`Redimensionar columna ${col.label}`}
                           className="h-9 w-2 shrink-0 cursor-col-resize touch-none rounded-sm border-0 bg-transparent p-0 hover:bg-sky-500/30 active:bg-sky-500/45"
                           onMouseDown={(ev) => beginColumnResize(ev, col.key)}
                         />
                       </div>
-                      {filterOpenCol === col.key && (
-                        <ColumnFilterPanel
-                          colKey={col.key}
-                          label={col.label}
-                          options={distinctColumnValues(rows, col.key)}
-                          selected={columnFilters[col.key]}
-                          activePrefix={columnPrefixFilters[col.key]}
-                          onApply={(set) => {
-                            setColumnFilters((prev) => ({ ...prev, [col.key]: set }));
-                            setColumnPrefixFilters((prev) => ({
-                              ...prev,
-                              [col.key]: null,
-                            }));
-                            setFilterOpenCol(null);
-                          }}
-                          onApplyPrefix={(prefix) => {
-                            const p = prefix?.trim() || null;
-                            setColumnPrefixFilters((prev) => ({
-                              ...prev,
-                              [col.key]: p,
-                            }));
-                            setColumnFilters((prev) => ({ ...prev, [col.key]: null }));
-                            setFilterOpenCol(null);
-                          }}
-                          onClose={() => setFilterOpenCol(null)}
-                        />
-                      )}
                     </th>
                   );
                 })}
@@ -1988,7 +1837,7 @@ export function CapturaProduccionClient({
                     {filterDatasetLoading
                       ? "Cargando datos…"
                       : filtersActive
-                        ? "Ningún registro coincide con la búsqueda o los filtros de columna."
+                        ? "Ningún registro coincide con la búsqueda."
                         : "Sin filas."}
                   </td>
                 </tr>
@@ -2173,203 +2022,6 @@ export function CapturaProduccionClient({
         </div>
       </div>
       )}
-    </div>
-  );
-}
-
-function ColumnFilterPanel({
-  colKey,
-  label,
-  options,
-  selected,
-  activePrefix,
-  onApply,
-  onApplyPrefix,
-  onClose,
-}: {
-  colKey: string;
-  label: string;
-  options: string[];
-  selected: Set<string> | null;
-  activePrefix: string | null;
-  onApply: (set: Set<string> | null) => void;
-  onApplyPrefix: (prefix: string | null) => void;
-  onClose: () => void;
-}) {
-  const initial = useMemo(() => {
-    if (selected && selected.size > 0) return new Set(selected);
-    return new Set(options);
-  }, [selected, options]);
-
-  const [local, setLocal] = useState<Set<string>>(() => new Set(initial));
-  const [search, setSearch] = useState(() => activePrefix?.trim() ?? "");
-
-  useEffect(() => {
-    setLocal(new Set(initial));
-  }, [initial, colKey]);
-
-  useEffect(() => {
-    setSearch(activePrefix?.trim() ?? "");
-  }, [colKey, activePrefix]);
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    const t = window.setTimeout(() => {
-      searchInputRef.current?.focus({ preventScroll: true });
-    }, 0);
-    return () => clearTimeout(t);
-  }, [colKey]);
-
-  const filteredOptions = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => {
-      const lo = o.toLowerCase();
-      return lo.startsWith(q) || lo.includes(q);
-    });
-  }, [options, search]);
-
-  const commitApplyCheckboxes = () => {
-    if (local.size === 0) onApply(new Set());
-    else if (local.size === options.length) onApply(null);
-    else onApply(new Set(local));
-  };
-
-  /** Con texto: igual que la barra general (prefijo), solo esta columna. Sin texto: filtro por valores marcados. */
-  const commitApplyFromForm = () => {
-    const q = search.trim();
-    if (q !== "") {
-      onApplyPrefix(q);
-      return;
-    }
-    commitApplyCheckboxes();
-  };
-
-  const ref = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    function onDocPointerDown(e: PointerEvent) {
-      const t = e.target as Node | null;
-      if (!t || !ref.current) return;
-      if (ref.current.contains(t)) return;
-      const hostTh = ref.current.closest("th");
-      if (hostTh?.contains(t)) return;
-      onCloseRef.current();
-    }
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
-  }, []);
-
-  const allDeselected = options.length > 0 && local.size === 0;
-
-  return (
-    <div
-      ref={ref}
-      data-grid-filter-panel
-      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-orange-500/35 bg-slate-950/95 p-2 shadow-2xl shadow-orange-950/40 backdrop-blur-md"
-      onMouseDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    >
-      <p className="mb-2 px-1 text-xs font-semibold text-slate-400">{label}</p>
-      <form
-        className="flex flex-col"
-        onSubmit={(e) => {
-          e.preventDefault();
-          commitApplyFromForm();
-        }}
-        onKeyDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <input
-          ref={searchInputRef}
-          type="text"
-          inputMode="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.stopPropagation()}
-          placeholder={`Ej. prefijo en ${label}…`}
-          enterKeyHint="search"
-          className="mb-1 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-orange-500/30"
-          autoComplete="off"
-          aria-label={`Filtro por texto en columna ${label}`}
-        />
-        <p className="mb-2 px-0.5 text-[10px] leading-snug text-slate-500">
-          Con texto: <span className="text-slate-400">Aplicar</span> filtra filas donde{" "}
-          <span className="font-medium text-slate-400">{label}</span> empieza por ese valor (como la
-          búsqueda general). Deja el campo vacío para usar solo las casillas de abajo.
-        </p>
-        {(activePrefix?.trim() ?? "") !== "" && (
-          <button
-            type="button"
-            className="mb-2 w-full rounded-lg border border-white/10 bg-slate-800/80 py-1.5 text-xs font-medium text-slate-300 transition hover:bg-slate-700/80"
-            onClick={() => onApplyPrefix(null)}
-          >
-            Quitar filtro por texto
-          </button>
-        )}
-        <p className="mb-1 px-0.5 text-[10px] font-medium uppercase tracking-wide text-slate-500">
-          Valores concretos
-        </p>
-        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-950/40 px-2 py-1.5 text-xs text-orange-100 hover:bg-orange-900/50">
-          <input
-            type="checkbox"
-            checked={allDeselected}
-            onChange={() => {
-              if (allDeselected) setLocal(new Set(options));
-              else setLocal(new Set());
-            }}
-          />
-          <span>Desmarcar todos</span>
-        </label>
-        <div className="max-h-48 overflow-y-auto text-xs">
-          {filteredOptions.length === 0 ? (
-            <p className="px-1 py-2 text-slate-500">Sin coincidencias</p>
-          ) : (
-            filteredOptions.map((opt) => (
-              <label
-                key={opt}
-                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-sky-500/15"
-              >
-                <input
-                  type="checkbox"
-                  checked={local.has(opt)}
-                  onChange={() => {
-                    setLocal((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(opt)) n.delete(opt);
-                      else n.add(opt);
-                      return n;
-                    });
-                  }}
-                />
-                <span className="truncate text-slate-200">{opt}</span>
-              </label>
-            ))
-          )}
-        </div>
-        <div className="mt-2 flex gap-2 border-t border-orange-500/25 pt-2">
-          <button
-            type="button"
-            className="flex-1 rounded-lg bg-red-950/50 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/60"
-            onClick={() => onApply(null)}
-          >
-            Limpiar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-lg bg-sky-600 py-1.5 text-xs font-medium text-white hover:bg-sky-500"
-            aria-label={
-              search.trim() !== ""
-                ? `Aplicar filtro por texto en ${label}`
-                : "Aplicar filtro por valores marcados"
-            }
-          >
-            Aplicar
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

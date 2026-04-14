@@ -3,7 +3,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { Input } from "@heroui/react";
 import {
-  Filter,
   FilterX,
   Search,
   AlertCircle,
@@ -29,8 +28,6 @@ import {
   isRowOnlyDefaultTurno,
   orderRowsWithEmptyFechaLast,
   rowMatchesGlobalSearch,
-  rowMatchesColumnFilters,
-  distinctColumnValues,
   findColumnSuggestion,
   mergeColumnSuggestion,
   computeFillTargetCells,
@@ -299,37 +296,20 @@ function parseClipboardTsv(text: string): string[][] {
 
 function applyCapturaFilters(
   rowList: EntregaPtRowState[],
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
+  globalSearch: string
 ): EntregaPtRowState[] {
-  return rowList.filter(
-    (row) =>
-      rowMatchesGlobalSearch(row, globalSearch) &&
-      rowMatchesColumnFilters(row, columnFilters)
-  );
+  return rowList.filter((row) => rowMatchesGlobalSearch(row, globalSearch));
 }
 
 function applyCapturaFiltersOnDisplayOrder(
   rowList: EntregaPtRowState[],
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
+  globalSearch: string
 ): EntregaPtRowState[] {
-  return applyCapturaFilters(
-    orderRowsWithEmptyFechaLast(rowList),
-    globalSearch,
-    columnFilters
-  );
+  return applyCapturaFilters(orderRowsWithEmptyFechaLast(rowList), globalSearch);
 }
 
-function entregaFiltersActive(
-  globalSearch: string,
-  columnFilters: Record<string, Set<string> | null>
-): boolean {
-  if (globalSearch.trim() !== "") return true;
-  for (const { key } of ENTREGA_PT_COLUMNS) {
-    if (columnFilters[key] !== null) return true;
-  }
-  return false;
+function entregaFiltersActive(globalSearch: string): boolean {
+  return globalSearch.trim() !== "";
 }
 
 export function EntregaPtClient({
@@ -347,24 +327,12 @@ export function EntregaPtClient({
   const [hasMoreOlder, setHasMoreOlder] = useState<boolean>(initialHasMoreOlder);
   const [loadingMore, setLoadingMore] = useState(false);
   const [globalSearch, setGlobalSearch] = useState("");
-  const [columnFilters, setColumnFilters] = useState<Record<string, Set<string> | null>>(
-    () => {
-      const o: Record<string, Set<string> | null> = {};
-      for (const { key } of ENTREGA_PT_COLUMNS) o[key] = null;
-      return o;
-    }
-  );
-
-  const [filterOpenCol, setFilterOpenCol] = useState<string | null>(null);
 
   const filtersActive = useMemo(
-    () => entregaFiltersActive(globalSearch, columnFilters),
-    [globalSearch, columnFilters]
+    () => entregaFiltersActive(globalSearch),
+    [globalSearch]
   );
-  const needsFullDataset = useMemo(
-    () => filtersActive || filterOpenCol !== null,
-    [filtersActive, filterOpenCol]
-  );
+  const needsFullDataset = useMemo(() => filtersActive, [filtersActive]);
   const needsFullDatasetRef = useRef(false);
   useEffect(() => {
     needsFullDatasetRef.current = needsFullDataset;
@@ -374,12 +342,6 @@ export function EntregaPtClient({
 
   const clearAllAppliedFilters = useCallback(() => {
     setGlobalSearch("");
-    setFilterOpenCol(null);
-    setColumnFilters(() => {
-      const o: Record<string, Set<string> | null> = {};
-      for (const { key } of ENTREGA_PT_COLUMNS) o[key] = null;
-      return o;
-    });
   }, []);
 
   const [selected, setSelected] = useState<Set<string>>(() => new Set());
@@ -430,16 +392,14 @@ export function EntregaPtClient({
 
   const globalSearchRef = useRef(globalSearch);
   globalSearchRef.current = globalSearch;
-  const columnFiltersRef = useRef(columnFilters);
-  columnFiltersRef.current = columnFilters;
 
   /** Arrastre de relleno tipo Excel (no extender selección con mouse). */
   const isFillDraggingRef = useRef(false);
   const [fillPreviewKeys, setFillPreviewKeys] = useState<Set<string> | null>(null);
 
   const displayRows = useMemo(
-    () => applyCapturaFiltersOnDisplayOrder(rows, globalSearch, columnFilters),
-    [rows, globalSearch, columnFilters]
+    () => applyCapturaFiltersOnDisplayOrder(rows, globalSearch),
+    [rows, globalSearch]
   );
 
   const fillAnchor = useMemo(() => {
@@ -622,7 +582,7 @@ export function EntregaPtClient({
             });
           } catch {
             if (!cancelled) {
-              setSaveBanner("No se pudo restaurar la vista al quitar filtros.");
+              setSaveBanner("No se pudo restaurar la vista al quitar la búsqueda.");
               setTimeout(() => setSaveBanner(null), 5000);
             }
           } finally {
@@ -639,14 +599,14 @@ export function EntregaPtClient({
     prevNeedsFullDatasetRef.current = true;
     setFilterDatasetLoading(true);
     let cancelled = false;
-    const debounceMs = filterOpenCol !== null ? 0 : 350;
+    const debounceMs = globalSearch.trim() !== "" ? 0 : 350;
     const timer = setTimeout(() => {
       void (async () => {
         try {
           const res = await fetchAllEntregaPtRowsForExcel(planta);
           if (cancelled) return;
           if (!res.ok) {
-            setSaveBanner(`Búsqueda/filtros: ${res.error}`);
+            setSaveBanner(`Búsqueda: ${res.error}`);
             return;
           }
           setSaveBanner(null);
@@ -669,7 +629,7 @@ export function EntregaPtClient({
       clearTimeout(timer);
       setFilterDatasetLoading(false);
     };
-  }, [needsFullDataset, filterOpenCol, planta, clearAllSaveTimers, ensureTrailing]);
+  }, [needsFullDataset, globalSearch, planta, clearAllSaveTimers, ensureTrailing]);
 
   const reloadFromDb = useCallback(async () => {
     if (editingRef.current) {
@@ -1018,8 +978,7 @@ export function EntregaPtClient({
       const previewFor = (endDr: number, endDc: number) => {
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
-          globalSearchRef.current,
-          columnFiltersRef.current
+          globalSearchRef.current
         );
         const maxR = disp.length - 1;
         const maxC = ENTREGA_PT_COLUMNS.length - 1;
@@ -1073,8 +1032,7 @@ export function EntregaPtClient({
 
         const disp = applyCapturaFiltersOnDisplayOrder(
           rowsRef.current,
-          globalSearchRef.current,
-          columnFiltersRef.current
+          globalSearchRef.current
         );
         const maxR = disp.length - 1;
         const maxC = ENTREGA_PT_COLUMNS.length - 1;
@@ -1240,8 +1198,7 @@ export function EntregaPtClient({
 
       const dispNow = applyCapturaFiltersOnDisplayOrder(
         rowsRef.current,
-        globalSearch,
-        columnFilters
+        globalSearch
       );
       if (dispNow.length === 0) return;
 
@@ -1294,17 +1251,17 @@ export function EntregaPtClient({
           ...r,
           values: { ...r.values },
         }));
-        let disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+        let disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
         const needBottom = originDr + matrix.length;
         let added = 0;
         const MAX_GROW = 500;
         while (disp.length < needBottom && added < MAX_GROW) {
           copy.push(createBlankRow());
           added++;
-          disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+          disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
         }
         copy = ensureTrailing(copy);
-        disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch, columnFilters);
+        disp = applyCapturaFiltersOnDisplayOrder(copy, globalSearch);
 
         const maxR = Math.min(matrix.length, Math.max(0, disp.length - originDr));
         if (maxR <= 0) {
@@ -1331,28 +1288,11 @@ export function EntregaPtClient({
         return ensureTrailing(copy);
       });
     },
-    [
-      selected,
-      globalSearch,
-      columnFilters,
-      pushUndo,
-      ensureTrailing,
-      scheduleSave,
-      commitEdit,
-    ]
+    [selected, globalSearch, pushUndo, ensureTrailing, scheduleSave, commitEdit]
   );
 
   const onGridKeyDown = useCallback(
     (e: React.KeyboardEvent) => {
-      const el = e.target as HTMLElement | null;
-      if (
-        el?.closest("[data-grid-filter-panel]") ||
-        (typeof document !== "undefined" &&
-          document.activeElement?.closest?.("[data-grid-filter-panel]"))
-      ) {
-        return;
-      }
-
       if (e.key === "z" && (e.ctrlKey || e.metaKey) && !e.shiftKey) {
         e.preventDefault();
         undo();
@@ -1666,11 +1606,11 @@ export function EntregaPtClient({
 
       {filterDatasetLoading && (
         <div className="shrink-0 rounded-lg border border-sky-500/25 bg-sky-500/10 px-3 py-2 text-sm text-sky-100">
-          Cargando todas las filas para búsqueda y filtros…
+          Cargando todas las filas para búsqueda…
         </div>
       )}
 
-      {(filtersActive || filterOpenCol !== null) && (
+      {filtersActive && (
         <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
@@ -1678,7 +1618,7 @@ export function EntregaPtClient({
             className="inline-flex items-center gap-2 rounded-lg border border-orange-500/35 bg-orange-950/40 px-3 py-1.5 text-xs font-medium text-orange-100 shadow-md transition hover:bg-orange-900/50"
           >
             <FilterX className="h-3.5 w-3.5 text-slate-400" />
-            Quitar filtros y búsqueda
+            Quitar búsqueda
           </button>
         </div>
       )}
@@ -1741,36 +1681,12 @@ export function EntregaPtClient({
                         </span>
                         <button
                           type="button"
-                          className="flex h-7 w-7 shrink-0 items-center justify-center rounded-lg text-sky-300/80 transition hover:bg-orange-600/25 hover:text-orange-100"
-                          aria-label={`Filtro ${col.label}`}
-                          onClick={(ev) => {
-                            ev.stopPropagation();
-                            setFilterOpenCol((c) => (c === col.key ? null : col.key));
-                          }}
-                        >
-                          <Filter className="h-3.5 w-3.5" />
-                        </button>
-                        <button
-                          type="button"
                           tabIndex={-1}
                           aria-label={`Redimensionar columna ${col.label}`}
                           className="h-9 w-2 shrink-0 cursor-col-resize touch-none rounded-sm border-0 bg-transparent p-0 hover:bg-sky-500/30 active:bg-sky-500/45"
                           onMouseDown={(ev) => beginColumnResize(ev, col.key)}
                         />
                       </div>
-                      {filterOpenCol === col.key && (
-                        <ColumnFilterPanel
-                          colKey={col.key}
-                          label={col.label}
-                          options={distinctColumnValues(rows, col.key)}
-                          selected={columnFilters[col.key]}
-                          onApply={(set) => {
-                            setColumnFilters((prev) => ({ ...prev, [col.key]: set }));
-                            setFilterOpenCol(null);
-                          }}
-                          onClose={() => setFilterOpenCol(null)}
-                        />
-                      )}
                     </th>
                   );
                 })}
@@ -1786,7 +1702,7 @@ export function EntregaPtClient({
                     {filterDatasetLoading
                       ? "Cargando datos…"
                       : filtersActive
-                        ? "Ningún registro coincide con la búsqueda o los filtros de columna."
+                        ? "Ningún registro coincide con la búsqueda."
                         : "Sin filas."}
                   </td>
                 </tr>
@@ -1970,164 +1886,6 @@ export function EntregaPtClient({
           </table>
         </div>
       </div>
-    </div>
-  );
-}
-
-function ColumnFilterPanel({
-  colKey,
-  label,
-  options,
-  selected,
-  onApply,
-  onClose,
-}: {
-  colKey: string;
-  label: string;
-  options: string[];
-  selected: Set<string> | null;
-  onApply: (set: Set<string> | null) => void;
-  onClose: () => void;
-}) {
-  const initial = useMemo(() => {
-    if (selected && selected.size > 0) return new Set(selected);
-    return new Set(options);
-  }, [selected, options]);
-
-  const [local, setLocal] = useState<Set<string>>(() => new Set(initial));
-  const [search, setSearch] = useState("");
-
-  useEffect(() => {
-    setLocal(new Set(initial));
-  }, [initial, colKey]);
-
-  useEffect(() => {
-    setSearch("");
-  }, [colKey]);
-
-  const searchInputRef = useRef<HTMLInputElement>(null);
-  useLayoutEffect(() => {
-    const t = window.setTimeout(() => {
-      searchInputRef.current?.focus({ preventScroll: true });
-    }, 0);
-    return () => clearTimeout(t);
-  }, [colKey]);
-
-  const filteredOptions = useMemo(() => {
-    const q = search.trim().toLowerCase();
-    if (!q) return options;
-    return options.filter((o) => o.toLowerCase().includes(q));
-  }, [options, search]);
-
-  const commitApply = () => {
-    if (local.size === 0) onApply(new Set());
-    else if (local.size === options.length) onApply(null);
-    else onApply(new Set(local));
-  };
-
-  const ref = useRef<HTMLDivElement>(null);
-  const onCloseRef = useRef(onClose);
-  onCloseRef.current = onClose;
-
-  useEffect(() => {
-    function onDocPointerDown(e: PointerEvent) {
-      const t = e.target as Node | null;
-      if (!t || !ref.current) return;
-      if (ref.current.contains(t)) return;
-      const hostTh = ref.current.closest("th");
-      if (hostTh?.contains(t)) return;
-      onCloseRef.current();
-    }
-    document.addEventListener("pointerdown", onDocPointerDown, true);
-    return () => document.removeEventListener("pointerdown", onDocPointerDown, true);
-  }, []);
-
-  const allDeselected = options.length > 0 && local.size === 0;
-
-  return (
-    <div
-      ref={ref}
-      data-grid-filter-panel
-      className="absolute left-2 top-full z-50 mt-1 w-64 rounded-xl border border-orange-500/35 bg-slate-950/95 p-2 shadow-2xl shadow-orange-950/40 backdrop-blur-md"
-      onMouseDown={(e) => e.stopPropagation()}
-      onKeyDown={(e) => e.stopPropagation()}
-    >
-      <p className="mb-2 px-1 text-xs font-semibold text-slate-400">{label}</p>
-      <form
-        className="flex flex-col"
-        onSubmit={(e) => {
-          e.preventDefault();
-          commitApply();
-        }}
-        onKeyDown={(e) => e.stopPropagation()}
-        onMouseDown={(e) => e.stopPropagation()}
-      >
-        <input
-          ref={searchInputRef}
-          type="text"
-          inputMode="search"
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          onKeyDown={(e) => e.stopPropagation()}
-          placeholder="Buscar valores…"
-          enterKeyHint="done"
-          className="mb-2 w-full rounded-lg border border-sky-500/40 bg-slate-900/90 px-2 py-1.5 text-xs text-slate-100 placeholder:text-slate-500 outline-none focus:border-cyan-400 focus:ring-1 focus:ring-orange-500/30"
-          autoComplete="off"
-          aria-label={`Buscar en filtro ${label}`}
-        />
-        <label className="mb-2 flex cursor-pointer items-center gap-2 rounded-lg border border-orange-500/30 bg-orange-950/40 px-2 py-1.5 text-xs text-orange-100 hover:bg-orange-900/50">
-          <input
-            type="checkbox"
-            checked={allDeselected}
-            onChange={() => {
-              if (allDeselected) setLocal(new Set(options));
-              else setLocal(new Set());
-            }}
-          />
-          <span>Desmarcar todos</span>
-        </label>
-        <div className="max-h-48 overflow-y-auto text-xs">
-          {filteredOptions.length === 0 ? (
-            <p className="px-1 py-2 text-slate-500">Sin coincidencias</p>
-          ) : (
-            filteredOptions.map((opt) => (
-              <label
-                key={opt}
-                className="flex cursor-pointer items-center gap-2 rounded px-1 py-1 hover:bg-sky-500/15"
-              >
-                <input
-                  type="checkbox"
-                  checked={local.has(opt)}
-                  onChange={() => {
-                    setLocal((prev) => {
-                      const n = new Set(prev);
-                      if (n.has(opt)) n.delete(opt);
-                      else n.add(opt);
-                      return n;
-                    });
-                  }}
-                />
-                <span className="truncate text-slate-200">{opt}</span>
-              </label>
-            ))
-          )}
-        </div>
-        <div className="mt-2 flex gap-2 border-t border-orange-500/25 pt-2">
-          <button
-            type="button"
-            className="flex-1 rounded-lg bg-red-950/50 py-1.5 text-xs font-medium text-red-200 hover:bg-red-900/60"
-            onClick={() => onApply(null)}
-          >
-            Limpiar
-          </button>
-          <button
-            type="submit"
-            className="flex-1 rounded-lg bg-gradient-to-r from-sky-500 via-cyan-500 to-orange-600 py-1.5 text-xs font-semibold text-slate-950 shadow-md shadow-cyan-500/20 hover:brightness-110"
-          >
-            Aplicar
-          </button>
-        </div>
-      </form>
     </div>
   );
 }

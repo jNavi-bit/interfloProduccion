@@ -77,30 +77,6 @@ export function rowMatchesGlobalSearch(row: EntregaPtRowState, q: string): boole
   return true;
 }
 
-export function rowMatchesColumnFilters(
-  row: EntregaPtRowState,
-  filters: Record<string, Set<string> | null>
-): boolean {
-  for (const { key } of ENTREGA_PT_COLUMNS) {
-    const allowed = filters[key];
-    if (allowed === null) continue;
-    if (allowed.size === 0) return false;
-    const cell = (row.values[key] ?? "").trim();
-    const display = cell === "" ? "(Vacío)" : cell;
-    if (!allowed.has(display)) return false;
-  }
-  return true;
-}
-
-export function distinctColumnValues(rows: EntregaPtRowState[], colKey: string): string[] {
-  const s = new Set<string>();
-  for (const row of rows) {
-    const cell = (row.values[colKey] ?? "").trim();
-    s.add(cell === "" ? "(Vacío)" : cell);
-  }
-  return [...s].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
-}
-
 export function findColumnSuggestion(
   rows: EntregaPtRowState[],
   colKey: string,

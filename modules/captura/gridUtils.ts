@@ -92,50 +92,6 @@ export function rowMatchesGlobalSearch(
   return true;
 }
 
-/**
- * Filtro por texto en una sola columna: el valor (trim) debe **empezar por** la consulta (trim),
- * sin distinguir mayúsculas. Igual criterio de prefijo que la búsqueda global, aplicado solo a `colKey`.
- */
-export function rowMatchesColumnSearchQuery(
-  row: ProduccionRowState,
-  colKey: string,
-  q: string
-): boolean {
-  const needle = q.trim().toLowerCase();
-  if (needle === "") return true;
-  const cell = (row.values[colKey] ?? "").trim().toLowerCase();
-  return cell.startsWith(needle);
-}
-
-export function rowMatchesColumnFilters(
-  row: ProduccionRowState,
-  filters: Record<string, Set<string> | null>,
-  prefixFilters: Record<string, string | null> = {}
-): boolean {
-  for (const { key } of CAPTURA_COLUMNS) {
-    const pfxRaw = prefixFilters[key];
-    if (pfxRaw != null && String(pfxRaw).trim() !== "") {
-      if (!rowMatchesColumnSearchQuery(row, key, String(pfxRaw))) return false;
-    }
-    const allowed = filters[key];
-    if (allowed === null) continue;
-    if (allowed.size === 0) return false;
-    const cell = (row.values[key] ?? "").trim();
-    const display = cell === "" ? "(Vacío)" : cell;
-    if (!allowed.has(display)) return false;
-  }
-  return true;
-}
-
-export function distinctColumnValues(rows: ProduccionRowState[], colKey: string): string[] {
-  const s = new Set<string>();
-  for (const row of rows) {
-    const cell = (row.values[colKey] ?? "").trim();
-    s.add(cell === "" ? "(Vacío)" : cell);
-  }
-  return [...s].sort((a, b) => a.localeCompare(b, "es", { sensitivity: "base" }));
-}
-
 export function findColumnSuggestion(
   rows: ProduccionRowState[],
   colKey: string,
